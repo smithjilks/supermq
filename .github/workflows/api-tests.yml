@@ -17,7 +17,6 @@ on:
       - "domains/api/http/**"
       - "groups/api/http/**"
       - "http/api/**"
-      - "invitations/api/**"
       - "journal/api/**"
       - "users/api/**"
 
@@ -33,7 +32,6 @@ env:
   CHANNELS_URL: http://localhost:9005
   GROUPS_URL: http://localhost:9004
   HTTP_ADAPTER_URL: http://localhost:8008
-  INVITATIONS_URL: http://localhost:9020
   AUTH_URL: http://localhost:9001
   CERTS_URL: http://localhost:9019
   JOURNAL_URL: http://localhost:9021
@@ -94,11 +92,6 @@ jobs:
               - ".github/workflows/api-tests.yml"
               - "apidocs/openapi/http.yml"
               - "http/api/**"
-
-            invitations:
-              - ".github/workflows/api-tests.yml"
-              - "apidocs/openapi/invitations.yml"
-              - "invitations/api/**"
 
             clients:
               - ".github/workflows/api-tests.yml"
@@ -169,16 +162,6 @@ jobs:
           checks: all
           report: false
           args: '--header "Authorization: Client ${{ env.CLIENT_SECRET }}" --contrib-openapi-formats-uuid --hypothesis-suppress-health-check=filter_too_much --stateful=links'
-
-      - name: Run Invitations API tests
-        if: steps.changes.outputs.invitations == 'true'
-        uses: schemathesis/action@v1
-        with:
-          schema: apidocs/openapi/invitations.yml
-          base-url: ${{ env.INVITATIONS_URL }}
-          checks: all
-          report: false
-          args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --contrib-openapi-formats-uuid --hypothesis-suppress-health-check=filter_too_much --stateful=links'
 
       - name: Run Auth API tests
         if: steps.changes.outputs.auth == 'true'

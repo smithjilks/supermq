@@ -15,6 +15,9 @@ import (
 	"github.com/go-kit/kit/endpoint"
 )
 
+// InvitationSent is the message returned when an invitation is sent.
+const InvitationSent = "invitation sent"
+
 func createDomainEndpoint(svc domains.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(createDomainReq)
@@ -180,5 +183,163 @@ func freezeDomainEndpoint(svc domains.Service) endpoint.Endpoint {
 			return nil, err
 		}
 		return freezeDomainRes{}, nil
+	}
+}
+
+func sendInvitationEndpoint(svc domains.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(sendInvitationReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+		session, ok := ctx.Value(api.SessionKey).(authn.Session)
+		if !ok {
+			return nil, svcerr.ErrAuthorization
+		}
+
+		invitation := domains.Invitation{
+			InviteeUserID: req.InviteeUserID,
+			DomainID:      session.DomainID,
+			RoleID:        req.RoleID,
+		}
+
+		if err := svc.SendInvitation(ctx, session, invitation); err != nil {
+			return nil, err
+		}
+
+		return sendInvitationRes{
+			Message: InvitationSent,
+		}, nil
+	}
+}
+
+func viewInvitationEndpoint(svc domains.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(invitationReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+		session, ok := ctx.Value(api.SessionKey).(authn.Session)
+		if !ok {
+			return nil, svcerr.ErrAuthorization
+		}
+		session.DomainID = req.domainID
+		invitation, err := svc.ViewInvitation(ctx, session, req.userID, req.domainID)
+		if err != nil {
+			return nil, err
+		}
+
+		return viewInvitationRes{
+			Invitation: invitation,
+		}, nil
+	}
+}
+
+func listDomainInvitationsEndpoint(svc domains.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(listInvitationsReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		session, ok := ctx.Value(api.SessionKey).(authn.Session)
+		if !ok {
+			return nil, svcerr.ErrAuthorization
+		}
+		req.InvitationPageMeta.DomainID = session.DomainID
+
+		page, err := svc.ListInvitations(ctx, session, req.InvitationPageMeta)
+		if err != nil {
+			return nil, err
+		}
+
+		return listInvitationsRes{
+			page,
+		}, nil
+	}
+}
+
+func listUserInvitationsEndpoint(svc domains.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(listInvitationsReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		session, ok := ctx.Value(api.SessionKey).(authn.Session)
+		if !ok {
+			return nil, svcerr.ErrAuthorization
+		}
+		session.DomainID = req.DomainID
+
+		page, err := svc.ListInvitations(ctx, session, req.InvitationPageMeta)
+		if err != nil {
+			return nil, err
+		}
+
+		return listInvitationsRes{
+			page,
+		}, nil
+	}
+}
+
+func acceptInvitationEndpoint(svc domains.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(acceptInvitationReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		session, ok := ctx.Value(api.SessionKey).(authn.Session)
+		if !ok {
+			return nil, svcerr.ErrAuthorization
+		}
+
+		if err := svc.AcceptInvitation(ctx, session, req.DomainID); err != nil {
+			return nil, err
+		}
+
+		return acceptInvitationRes{}, nil
+	}
+}
+
+func rejectInvitationEndpoint(svc domains.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(acceptInvitationReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		session, ok := ctx.Value(api.SessionKey).(authn.Session)
+		if !ok {
+			return nil, svcerr.ErrAuthorization
+		}
+
+		if err := svc.RejectInvitation(ctx, session, req.DomainID); err != nil {
+			return nil, err
+		}
+
+		return rejectInvitationRes{}, nil
+	}
+}
+
+func deleteInvitationEndpoint(svc domains.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(invitationReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		session, ok := ctx.Value(api.SessionKey).(authn.Session)
+		if !ok {
+			return nil, svcerr.ErrAuthorization
+		}
+		session.DomainID = req.domainID
+
+		if err := svc.DeleteInvitation(ctx, session, req.userID, req.domainID); err != nil {
+			return nil, err
+		}
+
+		return deleteInvitationRes{}, nil
 	}
 }

@@ -36,9 +36,9 @@ type domainRepo struct {
 	rolesPostgres.Repository
 }
 
-// New instantiates a PostgreSQL
+// NewRepository instantiates a PostgreSQL
 // implementation of Domain repository.
-func New(db postgres.Database) domains.Repository {
+func NewRepository(db postgres.Database) domains.Repository {
 	rmsvcRepo := rolesPostgres.NewRepository(db, policies.DomainType, rolesTableNamePrefix, entityTableName, entityIDColumnName)
 	return &domainRepo{
 		db:         db,
@@ -46,7 +46,7 @@ func New(db postgres.Database) domains.Repository {
 	}
 }
 
-func (repo domainRepo) Save(ctx context.Context, d domains.Domain) (dd domains.Domain, err error) {
+func (repo domainRepo) SaveDomain(ctx context.Context, d domains.Domain) (dd domains.Domain, err error) {
 	q := `INSERT INTO domains (id, name, tags, alias, metadata, created_at, updated_at, updated_by, created_by, status)
 	VALUES (:id, :name, :tags, :alias, :metadata, :created_at, :updated_at, :updated_by, :created_by, :status)
 	RETURNING id, name, tags, alias, metadata, created_at, updated_at, updated_by, created_by, status;`
@@ -76,8 +76,8 @@ func (repo domainRepo) Save(ctx context.Context, d domains.Domain) (dd domains.D
 	return domain, nil
 }
 
-// RetrieveByID retrieves Domain by its unique ID.
-func (repo domainRepo) RetrieveByID(ctx context.Context, id string) (domains.Domain, error) {
+// RetrieveDomainByID retrieves Domain by its unique ID.
+func (repo domainRepo) RetrieveDomainByID(ctx context.Context, id string) (domains.Domain, error) {
 	q := `SELECT d.id as id, d.name as name, d.tags as tags,  d.alias as alias, d.metadata as metadata, d.created_at as created_at, d.updated_at as updated_at, d.updated_by as updated_by, d.created_by as created_by, d.status as status
         FROM domains d WHERE d.id = :id`
 
@@ -107,7 +107,7 @@ func (repo domainRepo) RetrieveByID(ctx context.Context, id string) (domains.Dom
 	return domains.Domain{}, repoerr.ErrNotFound
 }
 
-func (repo domainRepo) RetrieveByUserAndID(ctx context.Context, userID, id string) (domains.Domain, error) {
+func (repo domainRepo) RetrieveDomainByUserAndID(ctx context.Context, userID, id string) (domains.Domain, error) {
 	q := repo.userDomainsBaseQuery() +
 		`SELECT
 			d.id as id,
@@ -156,7 +156,7 @@ func (repo domainRepo) RetrieveByUserAndID(ctx context.Context, userID, id strin
 }
 
 // RetrieveAllByIDs retrieves for given Domain IDs .
-func (repo domainRepo) RetrieveAllByIDs(ctx context.Context, pm domains.Page) (domains.DomainsPage, error) {
+func (repo domainRepo) RetrieveAllDomainsByIDs(ctx context.Context, pm domains.Page) (domains.DomainsPage, error) {
 	var q string
 	if len(pm.IDs) == 0 {
 		return domains.DomainsPage{}, nil
@@ -170,7 +170,7 @@ func (repo domainRepo) RetrieveAllByIDs(ctx context.Context, pm domains.Page) (d
 	FROM domains d`
 	q = fmt.Sprintf("%s %s  LIMIT %d OFFSET %d;", q, query, pm.Limit, pm.Offset)
 
-	dbPage, err := toDBClientsPage(pm)
+	dbPage, err := toDBDomainsPage(pm)
 	if err != nil {
 		return domains.DomainsPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
 	}
@@ -254,7 +254,7 @@ func (repo domainRepo) ListDomains(ctx context.Context, pm domains.Page) (domain
 
 	q = fmt.Sprintf(q, squery)
 
-	dbPage, err := toDBClientsPage(pm)
+	dbPage, err := toDBDomainsPage(pm)
 	if err != nil {
 		return domains.DomainsPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
 	}
@@ -294,8 +294,8 @@ func (repo domainRepo) ListDomains(ctx context.Context, pm domains.Page) (domain
 	}, nil
 }
 
-// Update updates the client name and metadata.
-func (repo domainRepo) Update(ctx context.Context, id string, dr domains.DomainReq) (domains.Domain, error) {
+// UpdateDomain updates the client name and metadata.
+func (repo domainRepo) UpdateDomain(ctx context.Context, id string, dr domains.DomainReq) (domains.Domain, error) {
 	var query []string
 	var upq string
 	d := domains.Domain{ID: id}
@@ -361,7 +361,7 @@ func (repo domainRepo) Update(ctx context.Context, id string, dr domains.DomainR
 }
 
 // Delete delete domain from database.
-func (repo domainRepo) Delete(ctx context.Context, id string) error {
+func (repo domainRepo) DeleteDomain(ctx context.Context, id string) error {
 	q := "DELETE FROM domains WHERE id = $1;"
 
 	res, err := repo.db.ExecContext(ctx, q, id)
@@ -553,7 +553,7 @@ type dbDomainsPage struct {
 	UserID   string         `db:"member_id"`
 }
 
-func toDBClientsPage(pm domains.Page) (dbDomainsPage, error) {
+func toDBDomainsPage(pm domains.Page) (dbDomainsPage, error) {
 	_, data, err := postgres.CreateMetadataQuery("", pm.Metadata)
 	if err != nil {
 		return dbDomainsPage{}, errors.Wrap(repoerr.ErrViewEntity, err)

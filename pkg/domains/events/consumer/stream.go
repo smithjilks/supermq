@@ -106,7 +106,7 @@ func (es *eventHandler) createDomainHandler(ctx context.Context, data map[string
 		return errors.Wrap(errCreateDomainEvent, err)
 	}
 
-	if _, err := es.repo.Save(ctx, d); err != nil {
+	if _, err := es.repo.SaveDomain(ctx, d); err != nil {
 		return errors.Wrap(errCreateDomainEvent, err)
 	}
 	if _, err := es.repo.AddRoles(ctx, rps); err != nil {
@@ -122,7 +122,7 @@ func (es *eventHandler) updateDomainHandler(ctx context.Context, data map[string
 		return errors.Wrap(errUpdateDomainEvent, err)
 	}
 
-	if _, err := es.repo.Update(
+	if _, err := es.repo.UpdateDomain(
 		ctx,
 		d.ID,
 		domains.DomainReq{
@@ -147,7 +147,7 @@ func (es *eventHandler) enableDomainHandler(ctx context.Context, data map[string
 	}
 
 	enabled := domains.EnabledStatus
-	if _, err := es.repo.Update(ctx, d.ID, domains.DomainReq{Status: &enabled, UpdatedBy: &d.UpdatedBy, UpdatedAt: &d.UpdatedAt}); err != nil {
+	if _, err := es.repo.UpdateDomain(ctx, d.ID, domains.DomainReq{Status: &enabled, UpdatedBy: &d.UpdatedBy, UpdatedAt: &d.UpdatedAt}); err != nil {
 		return errors.Wrap(errEnableDomainGroupEvent, err)
 	}
 
@@ -161,7 +161,7 @@ func (es *eventHandler) disableDomainHandler(ctx context.Context, data map[strin
 	}
 
 	disabled := domains.DisabledStatus
-	if _, err := es.repo.Update(ctx, d.ID, domains.DomainReq{Status: &disabled, UpdatedBy: &d.UpdatedBy, UpdatedAt: &d.UpdatedAt}); err != nil {
+	if _, err := es.repo.UpdateDomain(ctx, d.ID, domains.DomainReq{Status: &disabled, UpdatedBy: &d.UpdatedBy, UpdatedAt: &d.UpdatedAt}); err != nil {
 		return errors.Wrap(errDisableDomainGroupEvent, err)
 	}
 
@@ -175,7 +175,7 @@ func (es *eventHandler) freezeDomainHandler(ctx context.Context, data map[string
 	}
 
 	freeze := domains.FreezeStatus
-	if _, err := es.repo.Update(ctx, d.ID, domains.DomainReq{Status: &freeze, UpdatedBy: &d.UpdatedBy, UpdatedAt: &d.UpdatedAt}); err != nil {
+	if _, err := es.repo.UpdateDomain(ctx, d.ID, domains.DomainReq{Status: &freeze, UpdatedBy: &d.UpdatedBy, UpdatedAt: &d.UpdatedAt}); err != nil {
 		return errors.Wrap(errFreezeDomainGroupEvent, err)
 	}
 
@@ -197,7 +197,7 @@ func (es *eventHandler) deleteDomainHandler(ctx context.Context, data map[string
 		return errors.Wrap(errDeleteDomainEvent, err)
 	}
 
-	if err := es.repo.Delete(ctx, d.ID); err != nil {
+	if err := es.repo.DeleteDomain(ctx, d.ID); err != nil {
 		return errors.Wrap(errDeleteDomainEvent, err)
 	}
 

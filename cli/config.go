@@ -25,7 +25,6 @@ const (
 	defChannelsURL     string = defURL + ":9005"
 	defGroupsURL       string = defURL + ":9004"
 	defCertsURL        string = defURL + ":9019"
-	defInvitationsURL  string = defURL + ":9020"
 	defHTTPURL         string = defURL + ":8008"
 	defJournalURL      string = defURL + ":9021"
 	defTLSVerification bool   = false
@@ -43,7 +42,6 @@ type remotes struct {
 	GroupsURL       string `toml:"groups_url"`
 	HTTPAdapterURL  string `toml:"http_adapter_url"`
 	CertsURL        string `toml:"certs_url"`
-	InvitationsURL  string `toml:"invitations_url"`
 	JournalURL      string `toml:"journal_url"`
 	HostURL         string `toml:"host_url"`
 	TLSVerification bool   `toml:"tls_verification"`
@@ -114,7 +112,6 @@ func ParseConfig(sdkConf smqsdk.Config) (smqsdk.Config, error) {
 				GroupsURL:       defGroupsURL,
 				HTTPAdapterURL:  defHTTPURL,
 				CertsURL:        defCertsURL,
-				InvitationsURL:  defInvitationsURL,
 				JournalURL:      defJournalURL,
 				HostURL:         defURL,
 				TLSVerification: defTLSVerification,
@@ -197,10 +194,6 @@ func ParseConfig(sdkConf smqsdk.Config) (smqsdk.Config, error) {
 
 	if sdkConf.CertsURL == "" && config.Remotes.CertsURL != "" {
 		sdkConf.CertsURL = config.Remotes.CertsURL
-	}
-
-	if sdkConf.InvitationsURL == "" && config.Remotes.InvitationsURL != "" {
-		sdkConf.InvitationsURL = config.Remotes.InvitationsURL
 	}
 
 	if sdkConf.JournalURL == "" && config.Remotes.JournalURL != "" {

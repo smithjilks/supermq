@@ -92,3 +92,51 @@ func (ms *metricsMiddleware) ListDomains(ctx context.Context, session authn.Sess
 	}(time.Now())
 	return ms.svc.ListDomains(ctx, session, page)
 }
+
+func (mm *metricsMiddleware) SendInvitation(ctx context.Context, session authn.Session, invitation domains.Invitation) (err error) {
+	defer func(begin time.Time) {
+		mm.counter.With("method", "send_invitation").Add(1)
+		mm.latency.With("method", "send_invitation").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return mm.svc.SendInvitation(ctx, session, invitation)
+}
+
+func (mm *metricsMiddleware) ViewInvitation(ctx context.Context, session authn.Session, userID, domainID string) (invitation domains.Invitation, err error) {
+	defer func(begin time.Time) {
+		mm.counter.With("method", "view_invitation").Add(1)
+		mm.latency.With("method", "view_invitation").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return mm.svc.ViewInvitation(ctx, session, userID, domainID)
+}
+
+func (mm *metricsMiddleware) ListInvitations(ctx context.Context, session authn.Session, pm domains.InvitationPageMeta) (invs domains.InvitationPage, err error) {
+	defer func(begin time.Time) {
+		mm.counter.With("method", "list_invitations").Add(1)
+		mm.latency.With("method", "list_invitations").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return mm.svc.ListInvitations(ctx, session, pm)
+}
+
+func (mm *metricsMiddleware) AcceptInvitation(ctx context.Context, session authn.Session, domainID string) (err error) {
+	defer func(begin time.Time) {
+		mm.counter.With("method", "accept_invitation").Add(1)
+		mm.latency.With("method", "accept_invitation").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return mm.svc.AcceptInvitation(ctx, session, domainID)
+}
+
+func (mm *metricsMiddleware) RejectInvitation(ctx context.Context, session authn.Session, domainID string) (err error) {
+	defer func(begin time.Time) {
+		mm.counter.With("method", "reject_invitation").Add(1)
+		mm.latency.With("method", "reject_invitation").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return mm.svc.RejectInvitation(ctx, session, domainID)
+}
+
+func (mm *metricsMiddleware) DeleteInvitation(ctx context.Context, session authn.Session, userID, domainID string) (err error) {
+	defer func(begin time.Time) {
+		mm.counter.With("method", "delete_invitation").Add(1)
+		mm.latency.With("method", "delete_invitation").Observe(time.Since(begin).Seconds())
+	}(time.Now())
+	return mm.svc.DeleteInvitation(ctx, session, userID, domainID)
+}

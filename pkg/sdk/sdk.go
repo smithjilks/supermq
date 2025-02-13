@@ -1318,7 +1318,6 @@ type mgSDK struct {
 	groupsURL      string
 	channelsURL    string
 	domainsURL     string
-	invitationsURL string
 	journalURL     string
 	HostURL        string
 
@@ -1336,7 +1335,6 @@ type Config struct {
 	GroupsURL      string
 	ChannelsURL    string
 	DomainsURL     string
-	InvitationsURL string
 	JournalURL     string
 	HostURL        string
 
@@ -1355,7 +1353,6 @@ func NewSDK(conf Config) SDK {
 		groupsURL:      conf.GroupsURL,
 		channelsURL:    conf.ChannelsURL,
 		domainsURL:     conf.DomainsURL,
-		invitationsURL: conf.InvitationsURL,
 		journalURL:     conf.JournalURL,
 		HostURL:        conf.HostURL,
 

@@ -8,6 +8,8 @@ import (
 	"github.com/absmach/supermq/domains"
 )
 
+const maxLimitSize = 100
+
 type page struct {
 	offset   uint64
 	limit    uint64
@@ -108,6 +110,59 @@ type freezeDomainReq struct {
 func (req freezeDomainReq) validate() error {
 	if req.domainID == "" {
 		return apiutil.ErrMissingID
+	}
+
+	return nil
+}
+
+type sendInvitationReq struct {
+	InviteeUserID string `json:"invitee_user_id,omitempty"`
+	RoleID        string `json:"role_id,omitempty"`
+}
+
+func (req *sendInvitationReq) validate() error {
+	if req.InviteeUserID == "" || req.RoleID == "" {
+		return apiutil.ErrMissingID
+	}
+
+	return nil
+}
+
+type listInvitationsReq struct {
+	domains.InvitationPageMeta
+}
+
+func (req *listInvitationsReq) validate() error {
+	if req.InvitationPageMeta.Limit > maxLimitSize || req.InvitationPageMeta.Limit < 1 {
+		return apiutil.ErrLimitSize
+	}
+
+	return nil
+}
+
+type acceptInvitationReq struct {
+	DomainID string `json:"domain_id,omitempty"`
+}
+
+func (req *acceptInvitationReq) validate() error {
+	if req.DomainID == "" {
+		return apiutil.ErrMissingDomainID
+	}
+
+	return nil
+}
+
+type invitationReq struct {
+	userID   string
+	domainID string
+}
+
+func (req *invitationReq) validate() error {
+	if req.userID == "" {
+		return apiutil.ErrMissingID
+	}
+	if req.domainID == "" {
+		return apiutil.ErrMissingDomainID
 	}
 
 	return nil

@@ -164,14 +164,6 @@ jobs:
             internal:
               - "internal/**"
 
-            invitations:
-              - "invitations/**"
-              - "cmd/invitations/**"
-              - "auth.pb.go"
-              - "auth_grpc.pb.go"
-              - "auth/**"
-              - "pkg/sdk/**"
-
             journal:
               - "journal/**"
               - "cmd/journal/**"
@@ -291,11 +283,6 @@ jobs:
         if: steps.changes.outputs.internal == 'true' || steps.changes.outputs.workflow == 'true'
         run: |
           go test --race -v -count=1 -coverprofile=coverage/internal.out ./internal/...
-
-      - name: Run invitations tests
-        if: steps.changes.outputs.invitations == 'true' || steps.changes.outputs.workflow == 'true'
-        run: |
-          go test --race -v -count=1 -coverprofile=coverage/invitations.out ./invitations/...
 
       - name: Run logger tests
         if: steps.changes.outputs.logger == 'true' || steps.changes.outputs.workflow == 'true'

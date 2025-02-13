@@ -58,7 +58,6 @@ jobs:
               - "auth/service.go"
               - "pkg/events/events.go"
               - "pkg/groups/groups.go"
-              - "invitations/invitations.go"
               - "users/emailer.go"
               - "users/hasher.go"
               - "certs/certs.go"
@@ -119,8 +118,6 @@ jobs:
           MOCKERY_VERSION=v2.43.2
           go install github.com/vektra/mockery/v2@$MOCKERY_VERSION
 
-          mv ./invitations/mocks/repository.go ./invitations/mocks/repository.go.tmp
-          mv ./invitations/mocks/service.go ./invitations/mocks/service.go.tmp
           mv ./auth/mocks/token_client.go ./auth/mocks/token_client.go.tmp
           mv ./auth/mocks/authz.go ./auth/mocks/authz.go.tmp
           mv ./auth/mocks/keys.go ./auth/mocks/keys.go.tmp
@@ -177,8 +174,6 @@ jobs:
             fi
           }
 
-          check_mock_changes ./invitations/mocks/repository.go " ./invitations/mocks/repository.go"
-          check_mock_changes ./invitations/mocks/service.go " ./invitations/mocks/service.go"
           check_mock_changes ./auth/mocks/token_client.go " ./auth/mocks/token_client.go"
           check_mock_changes ./auth/mocks/authz.go " ./auth/mocks/authz.go"
           check_mock_changes ./auth/mocks/keys.go " ./auth/mocks/keys.go"

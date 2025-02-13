@@ -164,3 +164,106 @@ func (lm *loggingMiddleware) ListDomains(ctx context.Context, session authn.Sess
 	}(time.Now())
 	return lm.svc.ListDomains(ctx, session, page)
 }
+
+func (lm *loggingMiddleware) SendInvitation(ctx context.Context, session authn.Session, invitation domains.Invitation) (err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+			slog.String("invitee_user_id", invitation.InviteeUserID),
+			slog.String("domain_id", invitation.DomainID),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Send invitation failed", args...)
+			return
+		}
+		lm.logger.Info("Send invitation completed successfully", args...)
+	}(time.Now())
+	return lm.svc.SendInvitation(ctx, session, invitation)
+}
+
+func (lm *loggingMiddleware) ViewInvitation(ctx context.Context, session authn.Session, inviteeUserID, domainID string) (invitation domains.Invitation, err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+			slog.String("invitee_user_id", inviteeUserID),
+			slog.String("domain_id", domainID),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("View invitation failed", args...)
+			return
+		}
+		lm.logger.Info("View invitation completed successfully", args...)
+	}(time.Now())
+	return lm.svc.ViewInvitation(ctx, session, inviteeUserID, domainID)
+}
+
+func (lm *loggingMiddleware) ListInvitations(ctx context.Context, session authn.Session, pm domains.InvitationPageMeta) (invs domains.InvitationPage, err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+			slog.Group("page",
+				slog.Uint64("offset", pm.Offset),
+				slog.Uint64("limit", pm.Limit),
+				slog.Uint64("total", invs.Total),
+			),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("List invitations failed", args...)
+			return
+		}
+		lm.logger.Info("List invitations completed successfully", args...)
+	}(time.Now())
+	return lm.svc.ListInvitations(ctx, session, pm)
+}
+
+func (lm *loggingMiddleware) AcceptInvitation(ctx context.Context, session authn.Session, domainID string) (err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+			slog.String("domain_id", domainID),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Accept invitation failed", args...)
+			return
+		}
+		lm.logger.Info("Accept invitation completed successfully", args...)
+	}(time.Now())
+	return lm.svc.AcceptInvitation(ctx, session, domainID)
+}
+
+func (lm *loggingMiddleware) RejectInvitation(ctx context.Context, session authn.Session, domainID string) (err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+			slog.String("domain_id", domainID),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Reject invitation failed", args...)
+			return
+		}
+		lm.logger.Info("Reject invitation completed successfully", args...)
+	}(time.Now())
+	return lm.svc.RejectInvitation(ctx, session, domainID)
+}
+
+func (lm *loggingMiddleware) DeleteInvitation(ctx context.Context, session authn.Session, inviteeUserID, domainID string) (err error) {
+	defer func(begin time.Time) {
+		args := []any{
+			slog.String("duration", time.Since(begin).String()),
+			slog.String("invitee_user_id", inviteeUserID),
+			slog.String("domain_id", domainID),
+		}
+		if err != nil {
+			args = append(args, slog.Any("error", err))
+			lm.logger.Warn("Delete invitation failed", args...)
+			return
+		}
+		lm.logger.Info("Delete invitation completed successfully", args...)
+	}(time.Now())
+	return lm.svc.DeleteInvitation(ctx, session, inviteeUserID, domainID)
+}

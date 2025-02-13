@@ -176,3 +176,95 @@ func (es *eventStore) ListDomains(ctx context.Context, session authn.Session, p 
 
 	return dp, nil
 }
+
+func (es *eventStore) SendInvitation(ctx context.Context, session authn.Session, invitation domains.Invitation) error {
+	if err := es.svc.SendInvitation(ctx, session, invitation); err != nil {
+		return err
+	}
+
+	event := sendInvitationEvent{
+		invitation: invitation,
+		session:    session,
+	}
+
+	return es.Publish(ctx, event)
+}
+
+func (es *eventStore) ViewInvitation(ctx context.Context, session authn.Session, userID, domainID string) (domains.Invitation, error) {
+	invitation, err := es.svc.ViewInvitation(ctx, session, userID, domainID)
+	if err != nil {
+		return invitation, err
+	}
+
+	event := viewInvitationEvent{
+		inviteeUserID: userID,
+		domainID:      domainID,
+		roleID:        invitation.RoleID,
+		roleName:      invitation.RoleName,
+		session:       session,
+	}
+
+	if err := es.Publish(ctx, event); err != nil {
+		return invitation, err
+	}
+
+	return invitation, nil
+}
+
+func (es *eventStore) ListInvitations(ctx context.Context, session authn.Session, pm domains.InvitationPageMeta) (domains.InvitationPage, error) {
+	ip, err := es.svc.ListInvitations(ctx, session, pm)
+	if err != nil {
+		return ip, err
+	}
+
+	event := listInvitationsEvent{
+		InvitationPageMeta: pm,
+		session:            session,
+	}
+
+	if err := es.Publish(ctx, event); err != nil {
+		return ip, err
+	}
+
+	return ip, nil
+}
+
+func (es *eventStore) AcceptInvitation(ctx context.Context, session authn.Session, domainID string) error {
+	if err := es.svc.AcceptInvitation(ctx, session, domainID); err != nil {
+		return err
+	}
+
+	event := acceptInvitationEvent{
+		domainID: domainID,
+		session:  session,
+	}
+
+	return es.Publish(ctx, event)
+}
+
+func (es *eventStore) RejectInvitation(ctx context.Context, session authn.Session, domainID string) error {
+	if err := es.svc.RejectInvitation(ctx, session, domainID); err != nil {
+		return err
+	}
+
+	event := rejectInvitationEvent{
+		domainID: domainID,
+		session:  session,
+	}
+
+	return es.Publish(ctx, event)
+}
+
+func (es *eventStore) DeleteInvitation(ctx context.Context, session authn.Session, inviteeUserID, domainID string) error {
+	if err := es.svc.DeleteInvitation(ctx, session, inviteeUserID, domainID); err != nil {
+		return err
+	}
+
+	event := deleteInvitationEvent{
+		inviteeUserID: inviteeUserID,
+		domainID:      domainID,
+		session:       session,
+	}
+
+	return es.Publish(ctx, event)
+}

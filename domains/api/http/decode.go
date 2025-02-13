@@ -16,6 +16,15 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+const (
+	inviteeUserIDKey = "invitee_user_id"
+	domainIDKey      = "domain_id"
+	invitedByKey     = "invited_by"
+	roleIDKey        = "role_id"
+	roleNameKey      = "role_name"
+	stateKey         = "state"
+)
+
 func decodeCreateDomainRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	if !strings.Contains(r.Header.Get("Content-Type"), api.ContentType) {
 		return nil, errors.Wrap(apiutil.ErrValidation, apiutil.ErrUnsupportedContentType)
@@ -156,4 +165,87 @@ func decodePageRequest(_ context.Context, r *http.Request) (page, error) {
 		actions:  actions,
 		status:   st,
 	}, nil
+}
+
+func decodeSendInvitationReq(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), api.ContentType) {
+		return nil, errors.Wrap(apiutil.ErrValidation, apiutil.ErrUnsupportedContentType)
+	}
+
+	var req sendInvitationReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, errors.Wrap(err, errors.ErrMalformedEntity))
+	}
+
+	return req, nil
+}
+
+func decodeListInvitationsReq(_ context.Context, r *http.Request) (interface{}, error) {
+	offset, err := apiutil.ReadNumQuery[uint64](r, api.OffsetKey, api.DefOffset)
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	limit, err := apiutil.ReadNumQuery[uint64](r, api.LimitKey, api.DefLimit)
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	inviteeUserID, err := apiutil.ReadStringQuery(r, inviteeUserIDKey, "")
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	invitedBy, err := apiutil.ReadStringQuery(r, invitedByKey, "")
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	roleID, err := apiutil.ReadStringQuery(r, roleIDKey, "")
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	domainID, err := apiutil.ReadStringQuery(r, domainIDKey, "")
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	st, err := apiutil.ReadStringQuery(r, stateKey, domains.AllState.String())
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	state, err := domains.ToState(st)
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+	req := listInvitationsReq{
+		InvitationPageMeta: domains.InvitationPageMeta{
+			Offset:        offset,
+			Limit:         limit,
+			InvitedBy:     invitedBy,
+			InviteeUserID: inviteeUserID,
+			RoleID:        roleID,
+			DomainID:      domainID,
+			State:         state,
+		},
+	}
+
+	return req, nil
+}
+
+func decodeAcceptInvitationReq(_ context.Context, r *http.Request) (interface{}, error) {
+	if !strings.Contains(r.Header.Get("Content-Type"), api.ContentType) {
+		return nil, errors.Wrap(apiutil.ErrValidation, apiutil.ErrUnsupportedContentType)
+	}
+
+	var req acceptInvitationReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, errors.Wrap(err, errors.ErrMalformedEntity))
+	}
+
+	return req, nil
+}
+
+func decodeInvitationReq(_ context.Context, r *http.Request) (interface{}, error) {
+	req := invitationReq{
+		userID:   chi.URLParam(r, "userID"),
+		domainID: chi.URLParam(r, "domainID"),
+	}
+
+	return req, nil
 }

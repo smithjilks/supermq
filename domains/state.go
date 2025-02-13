@@ -1,7 +1,7 @@
 // Copyright (c) Abstract Machines
 // SPDX-License-Identifier: Apache-2.0
 
-package invitations
+package domains
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 type State uint8
 
 const (
-	All      State = iota // All is used for querying purposes to list invitations irrespective of their state - both pending and accepted.
+	AllState State = iota // All is used for querying purposes to list invitations irrespective of their state - both pending and accepted.
 	Pending               // Pending is the state of an invitation that has not been accepted yet.
 	Accepted              // Accepted is the state of an invitation that has been accepted.
 	Rejected              // Rejected is the state of an invitation that has been rejected.
@@ -32,7 +32,7 @@ const (
 // String converts invitation state to string literal.
 func (s State) String() string {
 	switch s {
-	case All:
+	case AllState:
 		return all
 	case Pending:
 		return pending
@@ -49,7 +49,7 @@ func (s State) String() string {
 func ToState(status string) (State, error) {
 	switch status {
 	case all:
-		return All, nil
+		return AllState, nil
 	case pending:
 		return Pending, nil
 	case accepted:

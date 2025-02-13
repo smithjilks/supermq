@@ -38,7 +38,7 @@ func (svc service) RetrieveEntity(ctx context.Context, id string) (domains.Domai
 	if err == nil {
 		return domains.Domain{ID: id, Status: status}, nil
 	}
-	dom, err := svc.repo.RetrieveByID(ctx, id)
+	dom, err := svc.repo.RetrieveDomainByID(ctx, id)
 	if err != nil {
 		return domains.Domain{}, errors.Wrap(svcerr.ErrViewEntity, err)
 	}

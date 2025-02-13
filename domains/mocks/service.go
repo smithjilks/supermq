@@ -21,6 +21,24 @@ type Service struct {
 	mock.Mock
 }
 
+// AcceptInvitation provides a mock function with given fields: ctx, session, domainID
+func (_m *Service) AcceptInvitation(ctx context.Context, session authn.Session, domainID string) error {
+	ret := _m.Called(ctx, session, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AcceptInvitation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, string) error); ok {
+		r0 = rf(ctx, session, domainID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AddRole provides a mock function with given fields: ctx, session, entityID, roleName, optionalActions, optionalMembers
 func (_m *Service) AddRole(ctx context.Context, session authn.Session, entityID string, roleName string, optionalActions []string, optionalMembers []string) (roles.RoleProvision, error) {
 	ret := _m.Called(ctx, session, entityID, roleName, optionalActions, optionalMembers)
@@ -84,6 +102,24 @@ func (_m *Service) CreateDomain(ctx context.Context, sesssion authn.Session, d d
 	}
 
 	return r0, r1, r2
+}
+
+// DeleteInvitation provides a mock function with given fields: ctx, session, inviteeUserID, domainID
+func (_m *Service) DeleteInvitation(ctx context.Context, session authn.Session, inviteeUserID string, domainID string) error {
+	ret := _m.Called(ctx, session, inviteeUserID, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteInvitation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, string, string) error); ok {
+		r0 = rf(ctx, session, inviteeUserID, domainID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // DisableDomain provides a mock function with given fields: ctx, sesssion, id
@@ -254,6 +290,52 @@ func (_m *Service) ListEntityMembers(ctx context.Context, session authn.Session,
 	}
 
 	return r0, r1
+}
+
+// ListInvitations provides a mock function with given fields: ctx, session, page
+func (_m *Service) ListInvitations(ctx context.Context, session authn.Session, page domains.InvitationPageMeta) (domains.InvitationPage, error) {
+	ret := _m.Called(ctx, session, page)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListInvitations")
+	}
+
+	var r0 domains.InvitationPage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, domains.InvitationPageMeta) (domains.InvitationPage, error)); ok {
+		return rf(ctx, session, page)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, domains.InvitationPageMeta) domains.InvitationPage); ok {
+		r0 = rf(ctx, session, page)
+	} else {
+		r0 = ret.Get(0).(domains.InvitationPage)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, authn.Session, domains.InvitationPageMeta) error); ok {
+		r1 = rf(ctx, session, page)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RejectInvitation provides a mock function with given fields: ctx, session, domainID
+func (_m *Service) RejectInvitation(ctx context.Context, session authn.Session, domainID string) error {
+	ret := _m.Called(ctx, session, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RejectInvitation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, string) error); ok {
+		r0 = rf(ctx, session, domainID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // RemoveEntityMembers provides a mock function with given fields: ctx, session, entityID, members
@@ -640,6 +722,24 @@ func (_m *Service) RoleRemoveMembers(ctx context.Context, session authn.Session,
 	return r0
 }
 
+// SendInvitation provides a mock function with given fields: ctx, session, invitation
+func (_m *Service) SendInvitation(ctx context.Context, session authn.Session, invitation domains.Invitation) error {
+	ret := _m.Called(ctx, session, invitation)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SendInvitation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, domains.Invitation) error); ok {
+		r0 = rf(ctx, session, invitation)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpdateDomain provides a mock function with given fields: ctx, sesssion, id, d
 func (_m *Service) UpdateDomain(ctx context.Context, sesssion authn.Session, id string, d domains.DomainReq) (domains.Domain, error) {
 	ret := _m.Called(ctx, sesssion, id, d)
@@ -689,6 +789,34 @@ func (_m *Service) UpdateRoleName(ctx context.Context, session authn.Session, en
 
 	if rf, ok := ret.Get(1).(func(context.Context, authn.Session, string, string, string) error); ok {
 		r1 = rf(ctx, session, entityID, roleID, newRoleName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ViewInvitation provides a mock function with given fields: ctx, session, inviteeUserID, domainID
+func (_m *Service) ViewInvitation(ctx context.Context, session authn.Session, inviteeUserID string, domainID string) (domains.Invitation, error) {
+	ret := _m.Called(ctx, session, inviteeUserID, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ViewInvitation")
+	}
+
+	var r0 domains.Invitation
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, string, string) (domains.Invitation, error)); ok {
+		return rf(ctx, session, inviteeUserID, domainID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, authn.Session, string, string) domains.Invitation); ok {
+		r0 = rf(ctx, session, inviteeUserID, domainID)
+	} else {
+		r0 = ret.Get(0).(domains.Invitation)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, authn.Session, string, string) error); ok {
+		r1 = rf(ctx, session, inviteeUserID, domainID)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -21,9 +21,9 @@ import (
 )
 
 var invitation = mgsdk.Invitation{
-	InvitedBy: testsutil.GenerateUUID(&testing.T{}),
-	UserID:    user.ID,
-	DomainID:  domain.ID,
+	InvitedBy:     testsutil.GenerateUUID(&testing.T{}),
+	InviteeUserID: user.ID,
+	DomainID:      domain.ID,
 }
 
 func TestSendUserInvitationCmd(t *testing.T) {

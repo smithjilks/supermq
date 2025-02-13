@@ -1,27 +1,27 @@
 // Copyright (c) Abstract Machines
 // SPDX-License-Identifier: Apache-2.0
 
-package invitations_test
+package domains_test
 
 import (
 	"testing"
 
 	apiutil "github.com/absmach/supermq/api/http/util"
-	"github.com/absmach/supermq/invitations"
+	"github.com/absmach/supermq/domains"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestState_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		state    invitations.State
+		state    domains.State
 		expected string
 	}{
-		{"Pending", invitations.Pending, "pending"},
-		{"Accepted", invitations.Accepted, "accepted"},
-		{"Rejected", invitations.Rejected, "rejected"},
-		{"All", invitations.All, "all"},
-		{"Unknown", invitations.State(100), "unknown"},
+		{"Pending", domains.Pending, "pending"},
+		{"Accepted", domains.Accepted, "accepted"},
+		{"Rejected", domains.Rejected, "rejected"},
+		{"All", domains.AllState, "all"},
+		{"Unknown", domains.State(100), "unknown"},
 	}
 
 	for _, tt := range tests {
@@ -34,18 +34,18 @@ func TestToState(t *testing.T) {
 	tests := []struct {
 		name   string
 		status string
-		state  invitations.State
+		state  domains.State
 		err    error
 	}{
-		{"Pending", "pending", invitations.Pending, nil},
-		{"Accepted", "accepted", invitations.Accepted, nil},
-		{"Rejected", "rejected", invitations.Rejected, nil},
-		{"All", "all", invitations.All, nil},
-		{"Unknown", "unknown", invitations.State(0), apiutil.ErrInvitationState},
+		{"Pending", "pending", domains.Pending, nil},
+		{"Accepted", "accepted", domains.Accepted, nil},
+		{"Rejected", "rejected", domains.Rejected, nil},
+		{"All", "all", domains.AllState, nil},
+		{"Unknown", "unknown", domains.State(0), apiutil.ErrInvitationState},
 	}
 
 	for _, tt := range tests {
-		got, err := invitations.ToState(tt.status)
+		got, err := domains.ToState(tt.status)
 		assert.Equal(t, tt.err, err, "ToState() error = %v, expected %v", err, tt.err)
 		assert.Equal(t, tt.state, got, "ToState() = %v, expected %v", got, tt.state)
 	}
@@ -54,15 +54,15 @@ func TestToState(t *testing.T) {
 func TestState_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		state    invitations.State
+		state    domains.State
 		expected []byte
 		err      error
 	}{
-		{"Pending", invitations.Pending, []byte(`"pending"`), nil},
-		{"Accepted", invitations.Accepted, []byte(`"accepted"`), nil},
-		{"Rejected", invitations.Rejected, []byte(`"rejected"`), nil},
-		{"All", invitations.All, []byte(`"all"`), nil},
-		{"Unknown", invitations.State(100), []byte(`"unknown"`), nil},
+		{"Pending", domains.Pending, []byte(`"pending"`), nil},
+		{"Accepted", domains.Accepted, []byte(`"accepted"`), nil},
+		{"Rejected", domains.Rejected, []byte(`"rejected"`), nil},
+		{"All", domains.AllState, []byte(`"all"`), nil},
+		{"Unknown", domains.State(100), []byte(`"unknown"`), nil},
 	}
 
 	for _, tt := range tests {
@@ -76,18 +76,18 @@ func TestState_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name  string
 		data  []byte
-		state invitations.State
+		state domains.State
 		err   error
 	}{
-		{"Pending", []byte(`"pending"`), invitations.Pending, nil},
-		{"Accepted", []byte(`"accepted"`), invitations.Accepted, nil},
-		{"Rejected", []byte(`"rejected"`), invitations.Rejected, nil},
-		{"All", []byte(`"all"`), invitations.All, nil},
-		{"Unknown", []byte(`"unknown"`), invitations.State(0), apiutil.ErrInvitationState},
+		{"Pending", []byte(`"pending"`), domains.Pending, nil},
+		{"Accepted", []byte(`"accepted"`), domains.Accepted, nil},
+		{"Rejected", []byte(`"rejected"`), domains.Rejected, nil},
+		{"All", []byte(`"all"`), domains.AllState, nil},
+		{"Unknown", []byte(`"unknown"`), domains.State(0), apiutil.ErrInvitationState},
 	}
 
 	for _, tt := range tests {
-		var state invitations.State
+		var state domains.State
 		err := state.UnmarshalJSON(tt.data)
 		assert.Equal(t, tt.err, err, "State.UnmarshalJSON() error = %v, expected %v", err, tt.err)
 		assert.Equal(t, tt.state, state, "State.UnmarshalJSON() = %v, expected %v", state, tt.state)

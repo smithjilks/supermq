@@ -159,7 +159,7 @@ func main() {
 	logger.Info("Authn successfully connected to auth gRPC server " + authnHandler.Secure())
 
 	database := postgres.NewDatabase(db, dbConfig, tracer)
-	domainsRepo := dpostgres.New(database)
+	domainsRepo := dpostgres.NewRepository(database)
 
 	cacheclient, err := redisclient.Connect(cfg.CacheURL)
 	if err != nil {

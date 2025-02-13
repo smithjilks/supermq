@@ -12,9 +12,9 @@ import (
 
 	mgchannels "github.com/absmach/supermq/channels"
 	"github.com/absmach/supermq/clients"
+	"github.com/absmach/supermq/domains"
 	groups "github.com/absmach/supermq/groups"
 	"github.com/absmach/supermq/internal/testsutil"
-	"github.com/absmach/supermq/invitations"
 	"github.com/absmach/supermq/journal"
 	"github.com/absmach/supermq/pkg/roles"
 	sdk "github.com/absmach/supermq/pkg/sdk"
@@ -218,17 +218,18 @@ func convertChannel(g sdk.Channel) mgchannels.Channel {
 	}
 }
 
-func convertInvitation(i sdk.Invitation) invitations.Invitation {
-	return invitations.Invitation{
-		InvitedBy:   i.InvitedBy,
-		UserID:      i.UserID,
-		DomainID:    i.DomainID,
-		Token:       i.Token,
-		Relation:    i.Relation,
-		CreatedAt:   i.CreatedAt,
-		UpdatedAt:   i.UpdatedAt,
-		ConfirmedAt: i.ConfirmedAt,
-		Resend:      i.Resend,
+func convertInvitation(i sdk.Invitation) domains.Invitation {
+	return domains.Invitation{
+		InvitedBy:     i.InvitedBy,
+		InviteeUserID: i.InviteeUserID,
+		DomainID:      i.DomainID,
+		RoleID:        i.RoleID,
+		RoleName:      i.RoleName,
+		Actions:       i.Actions,
+		CreatedAt:     i.CreatedAt,
+		UpdatedAt:     i.UpdatedAt,
+		ConfirmedAt:   i.ConfirmedAt,
+		RejectedAt:    i.RejectedAt,
 	}
 }
 
