@@ -11,6 +11,7 @@ import (
 	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/roles"
 	rmTrace "github.com/absmach/supermq/pkg/roles/rolemanager/tracing"
+	"github.com/absmach/supermq/pkg/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -30,7 +31,7 @@ func New(svc groups.Service, tracer trace.Tracer) groups.Service {
 
 // CreateGroup traces the "CreateGroup" operation of the wrapped groups.Service.
 func (tm *tracingMiddleware) CreateGroup(ctx context.Context, session authn.Session, g groups.Group) (groups.Group, []roles.RoleProvision, error) {
-	ctx, span := tm.tracer.Start(ctx, "svc_create_group")
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_create_group")
 	defer span.End()
 
 	return tm.svc.CreateGroup(ctx, session, g)
@@ -38,7 +39,7 @@ func (tm *tracingMiddleware) CreateGroup(ctx context.Context, session authn.Sess
 
 // ViewGroup traces the "ViewGroup" operation of the wrapped groups.Service.
 func (tm *tracingMiddleware) ViewGroup(ctx context.Context, session authn.Session, id string) (groups.Group, error) {
-	ctx, span := tm.tracer.Start(ctx, "svc_view_group", trace.WithAttributes(attribute.String("id", id)))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_view_group", trace.WithAttributes(attribute.String("id", id)))
 	defer span.End()
 
 	return tm.svc.ViewGroup(ctx, session, id)
@@ -56,7 +57,7 @@ func (tm *tracingMiddleware) ListGroups(ctx context.Context, session authn.Sessi
 	for k, v := range pm.Metadata {
 		attr = append(attr, attribute.String(k, fmt.Sprintf("%v", v)))
 	}
-	ctx, span := tm.tracer.Start(ctx, "svc_list_groups", trace.WithAttributes(attr...))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_list_groups", trace.WithAttributes(attr...))
 	defer span.End()
 
 	return tm.svc.ListGroups(ctx, session, pm)
@@ -74,7 +75,7 @@ func (tm *tracingMiddleware) ListUserGroups(ctx context.Context, session authn.S
 	for k, v := range pm.Metadata {
 		attr = append(attr, attribute.String(k, fmt.Sprintf("%v", v)))
 	}
-	ctx, span := tm.tracer.Start(ctx, "svc_list_user_groups", trace.WithAttributes(attr...))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_list_user_groups", trace.WithAttributes(attr...))
 	defer span.End()
 
 	return tm.svc.ListUserGroups(ctx, session, userID, pm)
@@ -82,7 +83,7 @@ func (tm *tracingMiddleware) ListUserGroups(ctx context.Context, session authn.S
 
 // UpdateGroup traces the "UpdateGroup" operation of the wrapped groups.Service.
 func (tm *tracingMiddleware) UpdateGroup(ctx context.Context, session authn.Session, g groups.Group) (groups.Group, error) {
-	ctx, span := tm.tracer.Start(ctx, "svc_update_group")
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_update_group")
 	defer span.End()
 
 	return tm.svc.UpdateGroup(ctx, session, g)
@@ -90,7 +91,7 @@ func (tm *tracingMiddleware) UpdateGroup(ctx context.Context, session authn.Sess
 
 // EnableGroup traces the "EnableGroup" operation of the wrapped groups.Service.
 func (tm *tracingMiddleware) EnableGroup(ctx context.Context, session authn.Session, id string) (groups.Group, error) {
-	ctx, span := tm.tracer.Start(ctx, "svc_enable_group", trace.WithAttributes(attribute.String("id", id)))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_enable_group", trace.WithAttributes(attribute.String("id", id)))
 	defer span.End()
 
 	return tm.svc.EnableGroup(ctx, session, id)
@@ -98,14 +99,14 @@ func (tm *tracingMiddleware) EnableGroup(ctx context.Context, session authn.Sess
 
 // DisableGroup traces the "DisableGroup" operation of the wrapped groups.Service.
 func (tm *tracingMiddleware) DisableGroup(ctx context.Context, session authn.Session, id string) (groups.Group, error) {
-	ctx, span := tm.tracer.Start(ctx, "svc_disable_group", trace.WithAttributes(attribute.String("id", id)))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_disable_group", trace.WithAttributes(attribute.String("id", id)))
 	defer span.End()
 
 	return tm.svc.DisableGroup(ctx, session, id)
 }
 
 func (tm *tracingMiddleware) RetrieveGroupHierarchy(ctx context.Context, session authn.Session, id string, hm groups.HierarchyPageMeta) (groups.HierarchyPage, error) {
-	ctx, span := tm.tracer.Start(ctx, "svc_list_group_hierarchy",
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_list_group_hierarchy",
 		trace.WithAttributes(
 			attribute.String("id", id),
 			attribute.Int64("level", int64(hm.Level)),
@@ -118,7 +119,7 @@ func (tm *tracingMiddleware) RetrieveGroupHierarchy(ctx context.Context, session
 }
 
 func (tm *tracingMiddleware) AddParentGroup(ctx context.Context, session authn.Session, id, parentID string) error {
-	ctx, span := tm.tracer.Start(ctx, "svc_add_parent_group",
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_add_parent_group",
 		trace.WithAttributes(
 			attribute.String("id", id),
 			attribute.String("parent_id", parentID),
@@ -128,13 +129,13 @@ func (tm *tracingMiddleware) AddParentGroup(ctx context.Context, session authn.S
 }
 
 func (tm *tracingMiddleware) RemoveParentGroup(ctx context.Context, session authn.Session, id string) error {
-	ctx, span := tm.tracer.Start(ctx, "svc_remove_parent_group", trace.WithAttributes(attribute.String("id", id)))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_remove_parent_group", trace.WithAttributes(attribute.String("id", id)))
 	defer span.End()
 	return tm.svc.RemoveParentGroup(ctx, session, id)
 }
 
 func (tm *tracingMiddleware) AddChildrenGroups(ctx context.Context, session authn.Session, id string, childrenGroupIDs []string) error {
-	ctx, span := tm.tracer.Start(ctx, "svc_add_children_groups",
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_add_children_groups",
 		trace.WithAttributes(
 			attribute.String("id", id),
 			attribute.StringSlice("children_group_ids", childrenGroupIDs),
@@ -145,7 +146,7 @@ func (tm *tracingMiddleware) AddChildrenGroups(ctx context.Context, session auth
 }
 
 func (tm *tracingMiddleware) RemoveChildrenGroups(ctx context.Context, session authn.Session, id string, childrenGroupIDs []string) error {
-	ctx, span := tm.tracer.Start(ctx, "svc_remove_children_groups",
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_remove_children_groups",
 		trace.WithAttributes(
 			attribute.String("id", id),
 			attribute.StringSlice("children_group_ids", childrenGroupIDs),
@@ -155,7 +156,7 @@ func (tm *tracingMiddleware) RemoveChildrenGroups(ctx context.Context, session a
 }
 
 func (tm *tracingMiddleware) RemoveAllChildrenGroups(ctx context.Context, session authn.Session, id string) error {
-	ctx, span := tm.tracer.Start(ctx, "svc_remove_all_children_groups", trace.WithAttributes(attribute.String("id", id)))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_remove_all_children_groups", trace.WithAttributes(attribute.String("id", id)))
 	defer span.End()
 	return tm.svc.RemoveAllChildrenGroups(ctx, session, id)
 }
@@ -174,14 +175,14 @@ func (tm *tracingMiddleware) ListChildrenGroups(ctx context.Context, session aut
 	for k, v := range pm.Metadata {
 		attr = append(attr, attribute.String(k, fmt.Sprintf("%v", v)))
 	}
-	ctx, span := tm.tracer.Start(ctx, "svc_list_children_groups", trace.WithAttributes(attr...))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_list_children_groups", trace.WithAttributes(attr...))
 	defer span.End()
 	return tm.svc.ListChildrenGroups(ctx, session, id, startLevel, endLevel, pm)
 }
 
 // DeleteGroup traces the "DeleteGroup" operation of the wrapped groups.Service.
 func (tm *tracingMiddleware) DeleteGroup(ctx context.Context, session authn.Session, id string) error {
-	ctx, span := tm.tracer.Start(ctx, "svc_delete_group", trace.WithAttributes(attribute.String("id", id)))
+	ctx, span := tracing.StartSpan(ctx, tm.tracer, "svc_delete_group", trace.WithAttributes(attribute.String("id", id)))
 	defer span.End()
 
 	return tm.svc.DeleteGroup(ctx, session, id)

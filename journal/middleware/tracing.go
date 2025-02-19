@@ -8,6 +8,7 @@ import (
 
 	"github.com/absmach/supermq/journal"
 	smqauthn "github.com/absmach/supermq/pkg/authn"
+	smqTracing "github.com/absmach/supermq/pkg/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -24,7 +25,7 @@ func Tracing(svc journal.Service, tracer trace.Tracer) journal.Service {
 }
 
 func (tm *tracing) Save(ctx context.Context, j journal.Journal) error {
-	ctx, span := tm.tracer.Start(ctx, "save", trace.WithAttributes(
+	ctx, span := smqTracing.StartSpan(ctx, tm.tracer, "save", trace.WithAttributes(
 		attribute.String("occurred_at", j.OccurredAt.String()),
 		attribute.String("operation", j.Operation),
 	))
@@ -34,7 +35,7 @@ func (tm *tracing) Save(ctx context.Context, j journal.Journal) error {
 }
 
 func (tm *tracing) RetrieveAll(ctx context.Context, session smqauthn.Session, page journal.Page) (resp journal.JournalsPage, err error) {
-	ctx, span := tm.tracer.Start(ctx, "retrieve_all", trace.WithAttributes(
+	ctx, span := smqTracing.StartSpan(ctx, tm.tracer, "retrieve_all", trace.WithAttributes(
 		attribute.Int64("offset", int64(page.Offset)),
 		attribute.Int64("limit", int64(page.Limit)),
 		attribute.Int64("total", int64(resp.Total)),
@@ -47,7 +48,7 @@ func (tm *tracing) RetrieveAll(ctx context.Context, session smqauthn.Session, pa
 }
 
 func (tm *tracing) RetrieveClientTelemetry(ctx context.Context, session smqauthn.Session, clientID string) (j journal.ClientTelemetry, err error) {
-	ctx, span := tm.tracer.Start(ctx, "retrieve", trace.WithAttributes(
+	ctx, span := smqTracing.StartSpan(ctx, tm.tracer, "retrieve", trace.WithAttributes(
 		attribute.String("client_id", clientID),
 		attribute.String("domain_id", session.DomainID),
 	))
