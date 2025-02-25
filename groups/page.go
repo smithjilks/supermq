@@ -19,4 +19,5 @@ type PageMeta struct {
 	RoleID     string   `json:"role_id,omitempty"`
 	Actions    []string `json:"actions,omitempty"`
 	AccessType string   `json:"access_type,omitempty"`
+	RootGroup  bool     `json:"root_group,omitempty"`
 }

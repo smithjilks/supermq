@@ -28,8 +28,8 @@ tags:
   - name: Roles
     description: All operations involving roles for groups
     externalDocs:
-       description: Find out more about roles
-       url: https://docs.supermq.abstractmachines.fr/
+      description: Find out more about roles
+      url: https://docs.supermq.abstractmachines.fr/
   - name: Health
     description: Health check operations
     externalDocs:
@@ -92,7 +92,7 @@ paths:
         - $ref: "#/components/parameters/Tree"
         - $ref: "#/components/parameters/Metadata"
         - $ref: "#/components/parameters/GroupName"
-        - $ref: "#/components/parameters/ParentID"
+        - $ref: "#/components/parameters/RootGroup"
       responses:
         "200":
           $ref: "#/components/responses/GroupPageRes"
@@ -516,7 +516,7 @@ paths:
         - bearerAuth: []
       responses:
         "201":
-            $ref: "./schemas/roles.yml#/components/responses/CreateRoleRes"
+          $ref: "./schemas/roles.yml#/components/responses/CreateRoleRes"
         "400":
           description: Failed due to malformed group's ID.
         "401":
@@ -1222,7 +1222,7 @@ components:
     ParentGroupReqObj:
       type: object
       properties:
-         group_id:
+        group_id:
           type: string
           format: uuid
           example: bb7edb32-2eac-4aad-aebe-ed96fe073879
@@ -1431,6 +1431,15 @@ components:
       schema:
         type: boolean
         default: false
+
+    RootGroup:
+      name: root_group
+      description: List groups without a parent group.
+      in: query
+      schema:
+        type: boolean
+        default: false
+      required: false
 
     Metadata:
       name: metadata

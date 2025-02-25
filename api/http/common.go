@@ -46,6 +46,7 @@ const (
 	TreeKey       = "tree"
 	ParentKey     = "parent_id"
 	LevelKey      = "level"
+	RootGroupKey  = "root_group"
 
 	TokenKey   = "token"
 	SubjectKey = "subject"

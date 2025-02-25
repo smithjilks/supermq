@@ -252,6 +252,11 @@ func decodePageMeta(r *http.Request) (groups.PageMeta, error) {
 		return groups.PageMeta{}, errors.Wrap(apiutil.ErrValidation, err)
 	}
 
+	rootGroup, err := apiutil.ReadBoolQuery(r, api.RootGroupKey, false)
+	if err != nil {
+		return groups.PageMeta{}, errors.Wrap(apiutil.ErrValidation, err)
+	}
+
 	ret := groups.PageMeta{
 		Offset:     offset,
 		Limit:      limit,
@@ -263,6 +268,7 @@ func decodePageMeta(r *http.Request) (groups.PageMeta, error) {
 		RoleID:     roleID,
 		Actions:    actions,
 		AccessType: accessType,
+		RootGroup:  rootGroup,
 	}
 	return ret, nil
 }
