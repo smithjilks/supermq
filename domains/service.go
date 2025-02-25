@@ -48,11 +48,13 @@ func New(repo Repository, cache Cache, policy policies.Service, idProvider super
 func (svc service) CreateDomain(ctx context.Context, session authn.Session, d Domain) (retDo Domain, retRps []roles.RoleProvision, retErr error) {
 	d.CreatedBy = session.UserID
 
-	domainID, err := svc.idProvider.ID()
-	if err != nil {
-		return Domain{}, []roles.RoleProvision{}, errors.Wrap(svcerr.ErrCreateEntity, err)
+	if d.ID == "" {
+		domainID, err := svc.idProvider.ID()
+		if err != nil {
+			return Domain{}, []roles.RoleProvision{}, errors.Wrap(svcerr.ErrCreateEntity, err)
+		}
+		d.ID = domainID
 	}
-	d.ID = domainID
 
 	if d.Status != DisabledStatus && d.Status != EnabledStatus {
 		return Domain{}, []roles.RoleProvision{}, svcerr.ErrInvalidStatus
@@ -67,7 +69,7 @@ func (svc service) CreateDomain(ctx context.Context, session authn.Session, d Do
 	}
 	defer func() {
 		if retErr != nil {
-			if errRollBack := svc.repo.DeleteDomain(ctx, domainID); errRollBack != nil {
+			if errRollBack := svc.repo.DeleteDomain(ctx, d.ID); errRollBack != nil {
 				retErr = errors.Wrap(retErr, errors.Wrap(errRollbackRepo, errRollBack))
 			}
 		}
@@ -87,7 +89,7 @@ func (svc service) CreateDomain(ctx context.Context, session authn.Session, d Do
 		},
 	}
 
-	rps, err := svc.AddNewEntitiesRoles(ctx, domainID, session.UserID, []string{domainID}, optionalPolicies, newBuiltInRoleMembers)
+	rps, err := svc.AddNewEntitiesRoles(ctx, d.ID, session.UserID, []string{d.ID}, optionalPolicies, newBuiltInRoleMembers)
 	if err != nil {
 		return Domain{}, []roles.RoleProvision{}, errors.Wrap(errCreateDomainPolicy, err)
 	}

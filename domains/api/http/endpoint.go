@@ -31,6 +31,7 @@ func createDomainEndpoint(svc domains.Service) endpoint.Endpoint {
 		}
 
 		d := domains.Domain{
+			ID:       req.ID,
 			Name:     req.Name,
 			Metadata: req.Metadata,
 			Tags:     req.Tags,

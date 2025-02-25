@@ -7,6 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/absmach/supermq"
 	apiutil "github.com/absmach/supermq/api/http/util"
@@ -87,11 +89,29 @@ const (
 	MaxIDSize    = 36
 )
 
+var (
+	nameRegExp        = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{34}[a-z0-9]$`)
+	errUnreadableName = errors.New("name containing double underscores or double dashes not allowed")
+)
+
 // ValidateUUID validates UUID format.
 func ValidateUUID(extID string) (err error) {
 	id, err := uuid.FromString(extID)
 	if id.String() != extID || err != nil {
 		return apiutil.ErrInvalidIDFormat
+	}
+
+	return nil
+}
+
+// ValidateName validates name format.
+func ValidateName(id string) error {
+	if !nameRegExp.MatchString(id) {
+		return apiutil.ErrInvalidNameFormat
+	}
+	// Names containing double underscores or double dashes are invalid due to similarity concerns.
+	if strings.Contains(id, "__") || strings.Contains(id, "--") {
+		return errors.Wrap(apiutil.ErrInvalidNameFormat, errUnreadableName)
 	}
 
 	return nil

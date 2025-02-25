@@ -107,6 +107,16 @@ func TestCreateDomain(t *testing.T) {
 			err:     nil,
 		},
 		{
+			desc: "create domain with custom id",
+			d: domains.Domain{
+				ID:     validID,
+				Name:   groupName,
+				Status: domains.EnabledStatus,
+			},
+			session: validSession,
+			err:     nil,
+		},
+		{
 			desc: "create domain with invalid status",
 			d: domains.Domain{
 				Name:   groupName,

@@ -256,4 +256,7 @@ var (
 
 	// ErrMissingPATID indicates missing pat ID.
 	ErrMissingPATID = errors.New("missing pat id")
+
+	// ErrInvalidNameFormat indicates invalid name format.
+	ErrInvalidNameFormat = errors.New("invalid name format")
 )
