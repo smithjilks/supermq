@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	apiutil "github.com/absmach/supermq/api/http/util"
 	"github.com/absmach/supermq/pkg/errors"
 )
 
@@ -275,15 +276,16 @@ func (s *Scope) Validate() error {
 		return errInvalidScope
 	}
 	if s.EntityID == "" {
-		return errors.New("missing entityID")
+		return apiutil.ErrMissingEntityID
 	}
 
 	switch s.EntityType {
 	case ChannelsType, GroupsType, ClientsType:
 		if s.OptionalDomainID == "" {
-			return errors.New("missing domainID")
+			return apiutil.ErrMissingDomainID
 		}
 	}
+
 	return nil
 }
 

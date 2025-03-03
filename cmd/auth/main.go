@@ -5,9 +5,13 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"time"
@@ -60,22 +64,29 @@ const (
 )
 
 type config struct {
-	LogLevel            string        `env:"SMQ_AUTH_LOG_LEVEL"               envDefault:"info"`
-	SecretKey           string        `env:"SMQ_AUTH_SECRET_KEY"              envDefault:"secret"`
-	JaegerURL           url.URL       `env:"SMQ_JAEGER_URL"                   envDefault:"http://localhost:4318/v1/traces"`
-	SendTelemetry       bool          `env:"SMQ_SEND_TELEMETRY"               envDefault:"true"`
-	InstanceID          string        `env:"SMQ_AUTH_ADAPTER_INSTANCE_ID"     envDefault:""`
-	AccessDuration      time.Duration `env:"SMQ_AUTH_ACCESS_TOKEN_DURATION"   envDefault:"1h"`
-	RefreshDuration     time.Duration `env:"SMQ_AUTH_REFRESH_TOKEN_DURATION"  envDefault:"24h"`
-	InvitationDuration  time.Duration `env:"SMQ_AUTH_INVITATION_DURATION"     envDefault:"168h"`
-	SpicedbHost         string        `env:"SMQ_SPICEDB_HOST"                 envDefault:"localhost"`
-	SpicedbPort         string        `env:"SMQ_SPICEDB_PORT"                 envDefault:"50051"`
-	SpicedbSchemaFile   string        `env:"SMQ_SPICEDB_SCHEMA_FILE"          envDefault:"./docker/spicedb/schema.zed"`
-	SpicedbPreSharedKey string        `env:"SMQ_SPICEDB_PRE_SHARED_KEY"       envDefault:"12345678"`
-	TraceRatio          float64       `env:"SMQ_JAEGER_TRACE_RATIO"           envDefault:"1.0"`
-	ESURL               string        `env:"SMQ_ES_URL"                       envDefault:"nats://localhost:4222"`
-	CacheURL            string        `env:"SMQ_AUTH_CACHE_URL"               envDefault:"redis://localhost:6379/0"`
-	CacheKeyDuration    time.Duration `env:"SMQ_AUTH_CACHE_KEY_DURATION"      envDefault:"10m"`
+	LogLevel                   string        `env:"SMQ_AUTH_LOG_LEVEL"                envDefault:"info"`
+	SecretKey                  string        `env:"SMQ_AUTH_SECRET_KEY"               envDefault:"secret"`
+	JaegerURL                  url.URL       `env:"SMQ_JAEGER_URL"                    envDefault:"http://localhost:4318/v1/traces"`
+	SendTelemetry              bool          `env:"SMQ_SEND_TELEMETRY"                envDefault:"true"`
+	InstanceID                 string        `env:"SMQ_AUTH_ADAPTER_INSTANCE_ID"      envDefault:""`
+	AccessDuration             time.Duration `env:"SMQ_AUTH_ACCESS_TOKEN_DURATION"    envDefault:"1h"`
+	RefreshDuration            time.Duration `env:"SMQ_AUTH_REFRESH_TOKEN_DURATION"   envDefault:"24h"`
+	InvitationDuration         time.Duration `env:"SMQ_AUTH_INVITATION_DURATION"      envDefault:"168h"`
+	SpicedbHost                string        `env:"SMQ_SPICEDB_HOST"                  envDefault:"localhost"`
+	SpicedbPort                string        `env:"SMQ_SPICEDB_PORT"                  envDefault:"50051"`
+	SpicedbSchemaFile          string        `env:"SMQ_SPICEDB_SCHEMA_FILE"           envDefault:"./docker/spicedb/schema.zed"`
+	SpicedbPreSharedKey        string        `env:"SMQ_SPICEDB_PRE_SHARED_KEY"        envDefault:"12345678"`
+	TraceRatio                 float64       `env:"SMQ_JAEGER_TRACE_RATIO"            envDefault:"1.0"`
+	ESURL                      string        `env:"SMQ_ES_URL"                        envDefault:"nats://localhost:4222"`
+	CacheURL                   string        `env:"SMQ_AUTH_CACHE_URL"                envDefault:"redis://localhost:6379/0"`
+	CacheKeyDuration           time.Duration `env:"SMQ_AUTH_CACHE_KEY_DURATION"       envDefault:"10m"`
+	AuthCalloutURLs            []string      `env:"SMQ_AUTH_CALLOUT_URLS"             envDefault:"" envSeparator:","`
+	AuthCalloutMethod          string        `env:"SMQ_AUTH_CALLOUT_METHOD"           envDefault:"POST"`
+	AuthCalloutTLSVerification bool          `env:"SMQ_AUTH_CALLOUT_TLS_VERIFICATION" envDefault:"true"`
+	AuthCalloutTimeout         time.Duration `env:"SMQ_AUTH_CALLOUT_TIMEOUT"          envDefault:"10s"`
+	AuthCalloutCACert          string        `env:"SMQ_AUTH_CALLOUT_CA_CERT"          envDefault:""`
+	AuthCalloutCert            string        `env:"SMQ_AUTH_CALLOUT_CERT"             envDefault:""`
+	AuthCalloutKey             string        `env:"SMQ_AUTH_CALLOUT_KEY"              envDefault:""`
 }
 
 func main() {
@@ -145,7 +156,12 @@ func main() {
 		return
 	}
 
-	svc := newService(ctx, db, tracer, cfg, dbConfig, logger, spicedbclient, cacheclient, cfg.CacheKeyDuration)
+	svc, err := newService(db, tracer, cfg, dbConfig, logger, spicedbclient, cacheclient, cfg.CacheKeyDuration)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create service : %s\n", err.Error()))
+		exitCode = 1
+		return
+	}
 
 	grpcServerConfig := server.Config{Port: defSvcGRPCPort}
 	if err := env.ParseWithOptions(&grpcServerConfig, env.Options{Prefix: envPrefixGrpc}); err != nil {
@@ -225,7 +241,7 @@ func initSchema(ctx context.Context, client *authzed.ClientWithExperimental, sch
 	return nil
 }
 
-func newService(_ context.Context, db *sqlx.DB, tracer trace.Tracer, cfg config, dbConfig pgclient.Config, logger *slog.Logger, spicedbClient *authzed.ClientWithExperimental, cacheClient *redis.Client, keyDuration time.Duration) auth.Service {
+func newService(db *sqlx.DB, tracer trace.Tracer, cfg config, dbConfig pgclient.Config, logger *slog.Logger, spicedbClient *authzed.ClientWithExperimental, cacheClient *redis.Client, keyDuration time.Duration) (auth.Service, error) {
 	cache := cache.NewPatsCache(cacheClient, keyDuration)
 
 	database := pgclient.NewDatabase(db, dbConfig, tracer)
@@ -239,11 +255,45 @@ func newService(_ context.Context, db *sqlx.DB, tracer trace.Tracer, cfg config,
 
 	t := jwt.New([]byte(cfg.SecretKey))
 
-	svc := auth.New(keysRepo, patsRepo, nil, hasher, idProvider, t, pEvaluator, pService, cfg.AccessDuration, cfg.RefreshDuration, cfg.InvitationDuration)
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: !cfg.AuthCalloutTLSVerification,
+	}
+	if cfg.AuthCalloutCert != "" || cfg.AuthCalloutKey != "" {
+		clientTLSCert, err := tls.LoadX509KeyPair(cfg.AuthCalloutCert, cfg.AuthCalloutKey)
+		if err != nil {
+			return nil, err
+		}
+		certPool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, err
+		}
+		caCert, err := os.ReadFile(cfg.AuthCalloutCACert)
+		if err != nil {
+			return nil, err
+		}
+		if !certPool.AppendCertsFromPEM(caCert) {
+			return nil, errors.New("failed to append CA certificate")
+		}
+		tlsConfig.RootCAs = certPool
+		tlsConfig.Certificates = []tls.Certificate{clientTLSCert}
+	}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+		Timeout: cfg.AuthCalloutTimeout,
+	}
+	callback, err := auth.NewCallback(httpClient, cfg.AuthCalloutMethod, cfg.AuthCalloutURLs)
+	if err != nil {
+		return nil, err
+	}
+
+	svc := auth.New(keysRepo, patsRepo, nil, hasher, idProvider, t, pEvaluator, pService, cfg.AccessDuration, cfg.RefreshDuration, cfg.InvitationDuration, callback)
 	svc = api.LoggingMiddleware(svc, logger)
 	counter, latency := prometheus.MakeMetrics("auth", "api")
 	svc = api.MetricsMiddleware(svc, counter, latency)
 	svc = tracing.New(svc, tracer)
 
-	return svc
+	return svc, nil
 }

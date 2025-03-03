@@ -215,7 +215,9 @@ func EncodeError(_ context.Context, err error, w http.ResponseWriter) {
 		errors.Contains(err, apiutil.ErrMissingRoleName),
 		errors.Contains(err, apiutil.ErrMissingRoleID),
 		errors.Contains(err, apiutil.ErrMissingPolicyEntityType),
-		errors.Contains(err, apiutil.ErrMissingRoleMembers):
+		errors.Contains(err, apiutil.ErrMissingRoleMembers),
+		errors.Contains(err, apiutil.ErrMissingDescription),
+		errors.Contains(err, apiutil.ErrMissingEntityID):
 		err = unwrap(err)
 		w.WriteHeader(http.StatusBadRequest)
 

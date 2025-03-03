@@ -142,6 +142,13 @@ services:
       SMQ_ES_URL: ${SMQ_ES_URL}
       SMQ_AUTH_CACHE_URL: ${SMQ_AUTH_CACHE_URL}
       SMQ_AUTH_CACHE_KEY_DURATION: ${SMQ_AUTH_CACHE_KEY_DURATION}
+      SMQ_AUTH_CALLOUT_URLS: ${SMQ_AUTH_CALLOUT_URLS}
+      SMQ_AUTH_CALLOUT_METHOD: ${SMQ_AUTH_CALLOUT_METHOD}
+      SMQ_AUTH_CALLOUT_TLS_VERIFICATION: ${SMQ_AUTH_CALLOUT_TLS_VERIFICATION}
+      SMQ_AUTH_CALLOUT_TIMEOUT: ${SMQ_AUTH_CALLOUT_TIMEOUT}
+      SMQ_AUTH_CALLOUT_CA_CERT: ${SMQ_AUTH_CALLOUT_CA_CERT}
+      SMQ_AUTH_CALLOUT_CERT: ${SMQ_AUTH_CALLOUT_CERT}
+      SMQ_AUTH_CALLOUT_KEY: ${SMQ_AUTH_CALLOUT_KEY}
     ports:
       - ${SMQ_AUTH_HTTP_PORT}:${SMQ_AUTH_HTTP_PORT}
       - ${SMQ_AUTH_GRPC_PORT}:${SMQ_AUTH_GRPC_PORT}
@@ -169,6 +176,22 @@ services:
       - type: bind
         source: ${SMQ_AUTH_GRPC_CLIENT_CA_CERTS:-ssl/certs/dummy/client_ca_certs}
         target: /auth-grpc-client-ca${SMQ_AUTH_GRPC_CLIENT_CA_CERTS:+.crt}
+        bind:
+          create_host_path: true
+      # Auth Callout Client Certificates
+      - type: bind
+        source: ${SMQ_AUTH_CALLOUT_CLIENT_CERT:-ssl/certs/dummy/client_cert}
+        target: /auth-callout-client${SMQ_AUTH_CALLOUT_CLIENT_CERT:+.crt}
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ${SMQ_AUTH_CALLOUT_CLIENT_KEY:-ssl/certs/dummy/client_key}
+        target: /auth-callout-client${SMQ_AUTH_CALLOUT_CLIENT_KEY:+.key}
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ${SMQ_AUTH_CALLOUT_CLIENT_CA_CERTS:-ssl/certs/dummy/client_ca_certs}
+        target: /auth-callout-client-ca${SMQ_AUTH_CALLOUT_CLIENT_CA_CERTS:+.crt}
         bind:
           create_host_path: true
 
