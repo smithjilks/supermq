@@ -852,6 +852,10 @@ func (repo *Repository) RemoveMemberFromAllRoles(ctx context.Context, memberID s
 	return nil
 }
 
+func (repo *Repository) SetMemberListBaseQuery(query string) {
+	repo.membersListBaseQuery = query
+}
+
 func applyConditions(query string, pageQuery roles.MembersRolePageQuery) string {
 	var whereClause []string
 
