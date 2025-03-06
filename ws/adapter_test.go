@@ -6,6 +6,7 @@ package ws_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	grpcChannelsV1 "github.com/absmach/supermq/api/grpc/channels/v1"
@@ -154,6 +155,15 @@ func TestSubscribe(t *testing.T) {
 			authZRes:  &grpcChannelsV1.AuthzRes{Authorized: false},
 			err:       svcerr.ErrAuthorization,
 		},
+		{
+			desc:      "subscribe to channel with valid clientKey prefixed with 'client_', chanID, subtopic",
+			clientKey: "Client " + clientKey,
+			chanID:    chanID,
+			subtopic:  subTopic,
+			authNRes:  &grpcClientsV1.AuthnRes{Id: clientID, Authenticated: true},
+			authZRes:  &grpcChannelsV1.AuthzRes{Authorized: true},
+			err:       nil,
+		},
 	}
 
 	for _, tc := range cases {
@@ -163,7 +173,11 @@ func TestSubscribe(t *testing.T) {
 			ClientID: clientID,
 			Handler:  c,
 		}
-		clientsCall := clients.On("Authenticate", mock.Anything, &grpcClientsV1.AuthnReq{ClientSecret: tc.clientKey}).Return(tc.authNRes, tc.authNErr)
+		authReq := &grpcClientsV1.AuthnReq{ClientSecret: tc.clientKey}
+		if strings.HasPrefix(tc.clientKey, "Client") {
+			authReq.ClientSecret = strings.TrimPrefix(tc.clientKey, "Client ")
+		}
+		clientsCall := clients.On("Authenticate", mock.Anything, authReq).Return(tc.authNRes, tc.authNErr)
 		channelsCall := channels.On("Authorize", mock.Anything, &grpcChannelsV1.AuthzReq{
 			ClientType: policies.ClientType,
 			ClientId:   tc.authNRes.GetId(),

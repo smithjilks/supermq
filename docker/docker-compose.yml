@@ -1245,7 +1245,7 @@ services:
           create_host_path: true
 
   rabbitmq:
-    image: rabbitmq:4.0.5-alpine
+    image: rabbitmq:4.0.5-management-alpine
     container_name: supermq-rabbitmq
     restart: on-failure
     environment:
@@ -1257,6 +1257,7 @@ services:
     ports:
       - ${SMQ_RABBITMQ_PORT}:${SMQ_RABBITMQ_PORT}
       - ${SMQ_RABBITMQ_HTTP_PORT}:${SMQ_RABBITMQ_HTTP_PORT}
+      - ${SMQ_RABBITMQ_WS_PORT}:${SMQ_RABBITMQ_WS_PORT}
     volumes:
       - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/10-defaults.conf
