@@ -930,7 +930,7 @@ func ToDBClientsPage(pm clients.Page) (dbClientsPage, error) {
 		Limit:      pm.Limit,
 		Name:       pm.Name,
 		Identity:   pm.Identity,
-		Id:         pm.Id,
+		Id:         pm.ID,
 		Metadata:   data,
 		Domain:     pm.Domain,
 		Status:     pm.Status,
@@ -977,8 +977,8 @@ func PageQuery(pm clients.Page) (string, error) {
 	if pm.Identity != "" {
 		query = append(query, "c.identity ILIKE '%' || :identity || '%'")
 	}
-	if pm.Id != "" {
-		query = append(query, "c.id ILIKE '%' || :id || '%'")
+	if pm.ID != "" {
+		query = append(query, "c.id = :id")
 	}
 	if pm.Tag != "" {
 		query = append(query, "EXISTS (SELECT 1 FROM unnest(tags) AS tag WHERE tag ILIKE '%' || :tag || '%')")
