@@ -32,7 +32,7 @@ servers:
         default: '8186'
 
 channels:
-  'channels/{channelID}/messages/{subtopic}':
+  'ch/{channelID}/msg/{subtopic}':
     parameters:
       channelID:
         $ref: '#/components/parameters/channelID'

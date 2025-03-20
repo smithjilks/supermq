@@ -20,7 +20,7 @@ const streamID = "supermq.mqtt"
 var (
 	errFailedSession  = errors.New("failed to obtain session from context")
 	errMalformedTopic = errors.New("malformed topic")
-	channelRegExp     = regexp.MustCompile(`^\/?channels\/([\w\-]+)\/messages(\/[^?]*)?(\?.*)?$`)
+	channelRegExp     = regexp.MustCompile(`^\/?ch\/([\w\-]+)\/msg(\/[^?]*)?(\?.*)?$`)
 )
 
 // EventStore is a struct used to store event streams in Redis.
