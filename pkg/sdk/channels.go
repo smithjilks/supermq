@@ -11,6 +11,7 @@ import (
 
 	apiutil "github.com/absmach/supermq/api/http/util"
 	"github.com/absmach/supermq/pkg/errors"
+	"github.com/absmach/supermq/pkg/roles"
 )
 
 const (
@@ -20,17 +21,18 @@ const (
 
 // Channel represents supermq channel.
 type Channel struct {
-	ID          string    `json:"id,omitempty"`
-	Name        string    `json:"name,omitempty"`
-	Tags        []string  `json:"tags,omitempty"`
-	ParentGroup string    `json:"parent_group_id,omitempty"`
-	DomainID    string    `json:"domain_id,omitempty"`
-	Metadata    Metadata  `json:"metadata,omitempty"`
-	CreatedAt   time.Time `json:"created_at,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at,omitempty"`
-	UpdatedBy   string    `json:"updated_by,omitempty"`
-	Status      string    `json:"status,omitempty"`
-	Permissions []string  `json:"permissions,omitempty"`
+	ID          string                    `json:"id,omitempty"`
+	Name        string                    `json:"name,omitempty"`
+	Tags        []string                  `json:"tags,omitempty"`
+	ParentGroup string                    `json:"parent_group_id,omitempty"`
+	DomainID    string                    `json:"domain_id,omitempty"`
+	Metadata    Metadata                  `json:"metadata,omitempty"`
+	CreatedAt   time.Time                 `json:"created_at,omitempty"`
+	UpdatedAt   time.Time                 `json:"updated_at,omitempty"`
+	UpdatedBy   string                    `json:"updated_by,omitempty"`
+	Status      string                    `json:"status,omitempty"`
+	Permissions []string                  `json:"permissions,omitempty"`
+	Roles       []roles.MemberRoleActions `json:"roles,omitempty"`
 }
 
 func (sdk mgSDK) CreateChannel(c Channel, domainID, token string) (Channel, errors.SDKError) {

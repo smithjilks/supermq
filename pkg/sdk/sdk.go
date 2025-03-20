@@ -1324,6 +1324,7 @@ type mgSDK struct {
 	msgContentType ContentType
 	client         *http.Client
 	curlFlag       bool
+	roles          bool
 }
 
 // Config contains sdk configuration parameters.
@@ -1341,6 +1342,7 @@ type Config struct {
 	MsgContentType  ContentType
 	TLSVerification bool
 	CurlFlag        bool
+	Roles           bool
 }
 
 // NewSDK returns new supermq SDK instance.
@@ -1365,12 +1367,16 @@ func NewSDK(conf Config) SDK {
 			},
 		},
 		curlFlag: conf.CurlFlag,
+		roles:    conf.Roles,
 	}
 }
 
 // processRequest creates and send a new HTTP request, and checks for errors in the HTTP response.
 // It then returns the response headers, the response body, and the associated error(s) (if any).
 func (sdk mgSDK) processRequest(method, reqUrl, token string, data []byte, headers map[string]string, expectedRespCodes ...int) (http.Header, []byte, errors.SDKError) {
+	if sdk.roles {
+		reqUrl = reqUrl + fmt.Sprintf("?roles=%v", true)
+	}
 	req, err := http.NewRequest(method, reqUrl, bytes.NewReader(data))
 	if err != nil {
 		return make(http.Header), []byte{}, errors.NewSDKError(err)

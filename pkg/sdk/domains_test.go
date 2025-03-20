@@ -345,6 +345,12 @@ func TestViewDomain(t *testing.T) {
 
 	mgsdk := sdk.NewSDK(sdkConf)
 
+	sdkConfRoles := sdk.Config{
+		DomainsURL: ds.URL,
+		Roles:      true,
+	}
+	mgsdkRoles := sdk.NewSDK(sdkConfRoles)
+
 	cases := []struct {
 		desc      string
 		token     string
@@ -371,7 +377,7 @@ func TestViewDomain(t *testing.T) {
 			desc:      "view domain successfully with roles",
 			token:     validToken,
 			domainID:  sdkDomain.ID,
-			withRoles: false,
+			withRoles: true,
 			svcRes:    authDomain,
 			svcErr:    nil,
 			response:  sdkDomain,
@@ -441,7 +447,16 @@ func TestViewDomain(t *testing.T) {
 			}
 			authCall := authn.On("Authenticate", mock.Anything, mock.Anything).Return(tc.session, tc.authnErr)
 			svcCall := svc.On("RetrieveDomain", mock.Anything, tc.session, tc.domainID, tc.withRoles).Return(tc.svcRes, tc.svcErr)
-			resp, err := mgsdk.Domain(tc.domainID, tc.token)
+
+			var resp sdk.Domain
+			var err error
+
+			switch tc.withRoles {
+			case true:
+				resp, err = mgsdkRoles.Domain(tc.domainID, tc.token)
+			default:
+				resp, err = mgsdk.Domain(tc.domainID, tc.token)
+			}
 			assert.Equal(t, tc.err, err)
 			assert.Equal(t, tc.response, resp)
 			if tc.withRoles {
@@ -2332,6 +2347,7 @@ func generateTestDomain(t *testing.T) (domains.Domain, sdk.Domain) {
 		CreatedAt: createdAt,
 		UpdatedBy: ownerID,
 		UpdatedAt: createdAt,
+		Roles:     validRoles,
 	}
 
 	sd := sdk.Domain{
@@ -2345,6 +2361,7 @@ func generateTestDomain(t *testing.T) (domains.Domain, sdk.Domain) {
 		CreatedAt: ad.CreatedAt,
 		UpdatedBy: ad.UpdatedBy,
 		UpdatedAt: ad.UpdatedAt,
+		Roles:     ad.Roles,
 	}
 	return ad, sd
 }

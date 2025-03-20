@@ -11,6 +11,7 @@ import (
 
 	apiutil "github.com/absmach/supermq/api/http/util"
 	"github.com/absmach/supermq/pkg/errors"
+	"github.com/absmach/supermq/pkg/roles"
 )
 
 const (
@@ -25,18 +26,19 @@ const (
 
 // Client represents supermq client.
 type Client struct {
-	ID          string                 `json:"id,omitempty"`
-	Name        string                 `json:"name,omitempty"`
-	Tags        []string               `json:"tags,omitempty"`
-	DomainID    string                 `json:"domain_id,omitempty"`
-	ParentGroup string                 `json:"parent_group_id,omitempty"`
-	Credentials ClientCredentials      `json:"credentials"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt   time.Time              `json:"created_at,omitempty"`
-	UpdatedAt   time.Time              `json:"updated_at,omitempty"`
-	UpdatedBy   string                 `json:"updated_by,omitempty"`
-	Status      string                 `json:"status,omitempty"`
-	Permissions []string               `json:"permissions,omitempty"`
+	ID          string                    `json:"id,omitempty"`
+	Name        string                    `json:"name,omitempty"`
+	Tags        []string                  `json:"tags,omitempty"`
+	DomainID    string                    `json:"domain_id,omitempty"`
+	ParentGroup string                    `json:"parent_group_id,omitempty"`
+	Credentials ClientCredentials         `json:"credentials"`
+	Metadata    map[string]interface{}    `json:"metadata,omitempty"`
+	CreatedAt   time.Time                 `json:"created_at,omitempty"`
+	UpdatedAt   time.Time                 `json:"updated_at,omitempty"`
+	UpdatedBy   string                    `json:"updated_by,omitempty"`
+	Status      string                    `json:"status,omitempty"`
+	Permissions []string                  `json:"permissions,omitempty"`
+	Roles       []roles.MemberRoleActions `json:"roles,omitempty"`
 }
 
 type ClientCredentials struct {
