@@ -143,8 +143,6 @@ type ClientSubscription struct {
 }
 
 // Service provides access to the journal log service.
-//
-//go:generate mockery --name Service --output=./mocks --filename service.go --quiet --note "Copyright (c) Abstract Machines"
 type Service interface {
 	// Save saves the journal to the database.
 	Save(ctx context.Context, journal Journal) error
@@ -157,8 +155,6 @@ type Service interface {
 }
 
 // Repository provides access to the journal log database.
-//
-//go:generate mockery --name Repository --output=./mocks --filename repository.go --quiet --note "Copyright (c) Abstract Machines"
 type Repository interface {
 	// Save persists the journal to a database.
 	Save(ctx context.Context, journal Journal) error

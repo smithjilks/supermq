@@ -165,7 +165,6 @@ func (page DomainsPage) MarshalJSON() ([]byte, error) {
 	return json.Marshal(a)
 }
 
-//go:generate mockery --name Service --output=./mocks --filename service.go --quiet --note "Copyright (c) Abstract Machines"
 type Service interface {
 	// CreateDomain creates a new domain.
 	CreateDomain(ctx context.Context, sesssion authn.Session, d Domain) (Domain, []roles.RoleProvision, error)
@@ -229,8 +228,6 @@ type Service interface {
 }
 
 // Repository specifies Domain persistence API.
-//
-//go:generate mockery --name Repository --output=./mocks --filename repository.go  --quiet --note "Copyright (c) Abstract Machines"
 type Repository interface {
 	// SaveDomain creates db insert transaction for the given domain.
 	SaveDomain(ctx context.Context, d Domain) (Domain, error)
@@ -275,8 +272,6 @@ type Repository interface {
 }
 
 // Cache contains domains caching interface.
-//
-//go:generate mockery --name Cache --output=./mocks --filename cache.go --quiet --note "Copyright (c) Abstract Machines"
 type Cache interface {
 	// Save stores pair domain status and  domain id.
 	Save(ctx context.Context, domainID string, status Status) error

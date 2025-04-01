@@ -178,7 +178,7 @@ func TestCreateChannelEndpoint(t *testing.T) {
 				tc.session = smqauthn.Session{DomainUserID: validID + "_" + validID, UserID: validID, DomainID: validID}
 			}
 			authCall := authn.On("Authenticate", mock.Anything, tc.token).Return(tc.session, tc.authnErr)
-			svcCall := svc.On("CreateChannels", mock.Anything, tc.session, tc.req).Return(tc.svcResp, []roles.RoleProvision{}, tc.svcErr)
+			svcCall := svc.On("CreateChannels", mock.Anything, tc.session, []channels.Channel{tc.req}).Return(tc.svcResp, []roles.RoleProvision{}, tc.svcErr)
 			res, err := req.make()
 			assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
 			var errRes respBody
@@ -314,7 +314,7 @@ func TestCreateChannelsEndpoint(t *testing.T) {
 				tc.session = smqauthn.Session{DomainUserID: validID + "_" + validID, UserID: validID, DomainID: validID}
 			}
 			authCall := authn.On("Authenticate", mock.Anything, tc.token).Return(tc.session, tc.authnErr)
-			svcCall := svc.On("CreateChannels", mock.Anything, tc.session, tc.req[0]).Return(tc.svcResp, []roles.RoleProvision{}, tc.svcErr)
+			svcCall := svc.On("CreateChannels", mock.Anything, tc.session, tc.req).Return(tc.svcResp, []roles.RoleProvision{}, tc.svcErr)
 			res, err := req.make()
 			assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
 			var errRes respBody

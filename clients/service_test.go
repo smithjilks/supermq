@@ -961,7 +961,7 @@ func TestDelete(t *testing.T) {
 			repoCall3 := repo.On("RetrieveEntitiesRolesActionsMembers", context.Background(), []string{tc.clientID}).Return([]roles.EntityActionRole{}, []roles.EntityMemberRole{}, nil)
 			policyCall1 := pService.On("DeletePolicies", context.Background(), mock.Anything).Return(tc.deletePoliciesErr)
 			policyCall2 := pService.On("DeletePolicyFilter", context.Background(), mock.Anything).Return(tc.deletePoliciesErr)
-			repoCall4 := repo.On("Delete", context.Background(), tc.clientID).Return(tc.deleteErr)
+			repoCall4 := repo.On("Delete", context.Background(), []string{tc.clientID}).Return(tc.deleteErr)
 			err := svc.Delete(context.Background(), smqauthn.Session{}, tc.clientID)
 			assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 			repoCall.Unset()

@@ -37,8 +37,6 @@ type Session struct {
 }
 
 // Authn is supermq authentication library.
-//
-//go:generate mockery --name Authentication --output=./mocks --filename authn.go --quiet --note "Copyright (c) Abstract Machines"
 type Authentication interface {
 	Authenticate(ctx context.Context, token string) (Session, error)
 }

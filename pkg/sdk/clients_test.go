@@ -193,12 +193,12 @@ func TestCreateClient(t *testing.T) {
 				tc.session = smqauthn.Session{DomainUserID: domainID + "_" + validID, UserID: validID, DomainID: domainID}
 			}
 			authCall := auth.On("Authenticate", mock.Anything, mock.Anything).Return(tc.session, tc.authenticateErr)
-			svcCall := tsvc.On("CreateClients", mock.Anything, tc.session, tc.svcReq).Return(tc.svcRes, []roles.RoleProvision{}, tc.svcErr)
+			svcCall := tsvc.On("CreateClients", mock.Anything, tc.session, []clients.Client{tc.svcReq}).Return(tc.svcRes, []roles.RoleProvision{}, tc.svcErr)
 			resp, err := mgsdk.CreateClient(tc.createClientReq, tc.domainID, tc.token)
 			assert.Equal(t, tc.err, err)
 			assert.Equal(t, tc.response, resp)
 			if tc.err == nil {
-				ok := svcCall.Parent.AssertCalled(t, "CreateClients", mock.Anything, tc.session, tc.svcReq)
+				ok := svcCall.Parent.AssertCalled(t, "CreateClients", mock.Anything, tc.session, []clients.Client{tc.svcReq})
 				assert.True(t, ok)
 			}
 			svcCall.Unset()
@@ -304,12 +304,12 @@ func TestCreateClients(t *testing.T) {
 				tc.session = smqauthn.Session{DomainUserID: domainID + "_" + validID, UserID: validID, DomainID: domainID}
 			}
 			authCall := auth.On("Authenticate", mock.Anything, mock.Anything).Return(tc.session, tc.authenticateErr)
-			svcCall := tsvc.On("CreateClients", mock.Anything, tc.session, tc.svcReq[0], tc.svcReq[1], tc.svcReq[2]).Return(tc.svcRes, []roles.RoleProvision{}, tc.svcErr)
+			svcCall := tsvc.On("CreateClients", mock.Anything, tc.session, tc.svcReq).Return(tc.svcRes, []roles.RoleProvision{}, tc.svcErr)
 			resp, err := mgsdk.CreateClients(tc.createClientsRequest, tc.domainID, tc.token)
 			assert.Equal(t, tc.err, err)
 			assert.Equal(t, tc.response, resp)
 			if tc.err == nil {
-				ok := svcCall.Parent.AssertCalled(t, "CreateClients", mock.Anything, tc.session, tc.svcReq[0], tc.svcReq[1], tc.svcReq[2])
+				ok := svcCall.Parent.AssertCalled(t, "CreateClients", mock.Anything, tc.session, tc.svcReq)
 				assert.True(t, ok)
 			}
 			svcCall.Unset()

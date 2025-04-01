@@ -769,7 +769,7 @@ func TestRemoveChannel(t *testing.T) {
 			repoCall2 := repo.On("RetrieveEntitiesRolesActionsMembers", context.Background(), []string{tc.id}).Return([]roles.EntityActionRole{}, []roles.EntityMemberRole{}, nil)
 			policyCall := policies.On("DeletePolicies", context.Background(), mock.Anything).Return(tc.deletePoliciesErr)
 			policyCall1 := policies.On("DeletePolicyFilter", context.Background(), mock.Anything).Return(tc.deletePolicyFilterErr)
-			repoCall3 := repoCall.On("Remove", context.Background(), tc.id).Return(tc.removeErr)
+			repoCall3 := repoCall.On("Remove", context.Background(), []string{tc.id}).Return(tc.removeErr)
 			err := svc.RemoveChannel(context.Background(), validSession, tc.id)
 			assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("expected error %v to contain %v", err, tc.err))
 			repoCall.Unset()

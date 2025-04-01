@@ -84,8 +84,6 @@ type HierarchyPage struct {
 }
 
 // Repository specifies a group persistence API.
-//
-//go:generate mockery --name Repository --output=./mocks --filename repository.go --quiet --note "Copyright (c) Abstract Machines" --unroll-variadic=false
 type Repository interface {
 	// Save group.
 	Save(ctx context.Context, g Group) (Group, error)
@@ -135,7 +133,6 @@ type Repository interface {
 	roles.Repository
 }
 
-//go:generate mockery --name Service --output=./mocks --filename service.go --quiet --note "Copyright (c) Abstract Machines" --unroll-variadic=false
 type Service interface {
 	// CreateGroup creates new  group.
 	CreateGroup(ctx context.Context, session authn.Session, g Group) (Group, []roles.RoleProvision, error)

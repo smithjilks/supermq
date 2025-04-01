@@ -12,7 +12,6 @@ import (
 	"github.com/absmach/supermq/pkg/policies"
 )
 
-//go:generate mockery --name Service  --output=./mocks --filename service.go --quiet --note "Copyright (c) Abstract Machines"
 type Service interface {
 	// Authenticate returns client ID for given client key.
 	Authenticate(ctx context.Context, key string) (string, error)

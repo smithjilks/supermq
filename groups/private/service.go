@@ -9,7 +9,6 @@ import (
 	"github.com/absmach/supermq/groups"
 )
 
-//go:generate mockery --name Service  --output=./mocks --filename service.go --quiet --note "Copyright (c) Abstract Machines"
 type Service interface {
 	RetrieveById(ctx context.Context, id string) (groups.Group, error)
 }

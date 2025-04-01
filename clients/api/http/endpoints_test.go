@@ -228,7 +228,7 @@ func TestCreateClient(t *testing.T) {
 			}
 
 			authCall := authn.On("Authenticate", mock.Anything, tc.token).Return(tc.authnRes, tc.authnErr)
-			svcCall := svc.On("CreateClients", mock.Anything, tc.authnRes, tc.client).Return([]clients.Client{tc.client}, []roles.RoleProvision{}, tc.err)
+			svcCall := svc.On("CreateClients", mock.Anything, tc.authnRes, []clients.Client{tc.client}).Return([]clients.Client{tc.client}, []roles.RoleProvision{}, tc.err)
 			res, err := req.make()
 			assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
 			var errRes respBody

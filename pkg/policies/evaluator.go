@@ -57,7 +57,6 @@ const (
 
 const SuperMQObject = "supermq"
 
-//go:generate mockery --name Evaluator --output=./mocks --filename evaluator.go --quiet --note "Copyright (c) Abstract Machines"
 type Evaluator interface {
 	// CheckPolicy checks if the subject has a relation on the object.
 	// It returns a non-nil error if the subject has no relation on

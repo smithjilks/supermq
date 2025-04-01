@@ -13,7 +13,6 @@ import (
 
 const defLimit = 100
 
-//go:generate mockery --name Service  --output=./mocks --filename service.go --quiet --note "Copyright (c) Abstract Machines"
 type Service interface {
 	RetrieveEntity(ctx context.Context, id string) (domains.Domain, error)
 	DeleteUserFromDomains(ctx context.Context, id string) error

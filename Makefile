@@ -21,7 +21,7 @@ DOCKER_PROJECT ?= $(shell echo $(subst $(space),,$(USER_REPO)) | sed -E 's/[^a-z
 DOCKER_COMPOSE_COMMANDS_SUPPORTED := up down config restart
 DEFAULT_DOCKER_COMPOSE_COMMAND  := up
 GRPC_MTLS_CERT_FILES_EXISTS = 0
-MOCKERY_VERSION=v2.43.2
+MOCKERY_VERSION=v3.0.0-beta.6
 PKG_PROTO_GEN_OUT_DIR=api/grpc
 INTERNAL_PROTO_DIR=internal/proto
 INTERNAL_PROTO_FILES := $(shell find $(INTERNAL_PROTO_DIR) -name "*.proto" | sed 's|$(INTERNAL_PROTO_DIR)/||')
@@ -118,8 +118,8 @@ install:
 	done
 
 mocks:
-	@which mockery > /dev/null || go install github.com/vektra/mockery/v2@$(MOCKERY_VERSION)
-	@unset MOCKERY_VERSION && go generate ./...
+	@which mockery > /dev/null || go install github.com/vektra/mockery/v3@$(MOCKERY_VERSION)
+	@unset MOCKERY_VERSION
 	mockery --config ./tools/config/.mockery.yaml
 
 

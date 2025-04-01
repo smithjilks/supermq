@@ -24,8 +24,6 @@ type callback struct {
 }
 
 // CallBack send auth request to an external service.
-//
-//go:generate mockery --name CallBack --output=./mocks --filename callback.go --quiet --note "Copyright (c) Abstract Machines"
 type CallBack interface {
 	Authorize(ctx context.Context, pr policies.Policy) error
 }

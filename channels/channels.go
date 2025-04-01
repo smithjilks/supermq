@@ -88,7 +88,6 @@ type AuthzReq struct {
 	Type       connections.ConnType
 }
 
-//go:generate mockery --name Service  --output=./mocks --filename service.go --quiet --note "Copyright (c) Abstract Machines"
 type Service interface {
 	// CreateChannels adds channels to the user.
 	CreateChannels(ctx context.Context, session authn.Session, channels ...Channel) ([]Channel, []roles.RoleProvision, error)
@@ -132,8 +131,6 @@ type Service interface {
 }
 
 // ChannelRepository specifies a channel persistence API.
-//
-//go:generate mockery --name Repository --output=./mocks --filename repository.go  --quiet --note "Copyright (c) Abstract Machines"
 type Repository interface {
 	// Save persists multiple channels. Channels are saved using a transaction. If one channel
 	// fails then none will be saved. Successful operation is indicated by non-nil

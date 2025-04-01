@@ -20,8 +20,6 @@ type Config struct {
 
 // Provider is an interface that provides the OAuth2 flow for a specific provider
 // (e.g. Google, GitHub, etc.)
-//
-//go:generate mockery --name Provider --output=./mocks --filename provider.go --quiet --note "Copyright (c) Abstract Machines"
 type Provider interface {
 	// Name returns the name of the OAuth2 provider.
 	Name() string
