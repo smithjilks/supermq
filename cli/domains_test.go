@@ -24,7 +24,7 @@ var (
 	domain = smqsdk.Domain{
 		ID:    testsutil.GenerateUUID(&testing.T{}),
 		Name:  "Test domain",
-		Alias: "alias",
+		Route: "route",
 	}
 	roleID = testsutil.GenerateUUID(&testing.T{})
 )
@@ -49,7 +49,7 @@ func TestCreateDomainsCmd(t *testing.T) {
 			desc: "create domain successfully",
 			args: []string{
 				dom.Name,
-				dom.Alias,
+				dom.Route,
 				validToken,
 			},
 			logType: entityLog,
@@ -59,7 +59,7 @@ func TestCreateDomainsCmd(t *testing.T) {
 			desc: "create domain with invalid args",
 			args: []string{
 				dom.Name,
-				dom.Alias,
+				dom.Route,
 				validToken,
 				extraArg,
 			},
@@ -69,7 +69,7 @@ func TestCreateDomainsCmd(t *testing.T) {
 			desc: "create domain with invalid token",
 			args: []string{
 				dom.Name,
-				dom.Alias,
+				dom.Route,
 				invalidToken,
 			},
 			sdkErr:        errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),

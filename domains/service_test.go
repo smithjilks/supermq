@@ -49,7 +49,7 @@ var (
 		ID:        validID,
 		Name:      groupName,
 		Tags:      []string{"tag1", "tag2"},
-		Alias:     "test",
+		Route:     "test",
 		RoleID:    "test_role_id",
 		CreatedBy: validID,
 		UpdatedBy: validID,
@@ -66,7 +66,7 @@ var (
 		ID:        validID,
 		Name:      groupName,
 		Tags:      []string{"tag1", "tag2"},
-		Alias:     "test",
+		Route:     "test",
 		RoleID:    "test_role_id",
 		CreatedBy: validID,
 		UpdatedBy: validID,
@@ -303,7 +303,7 @@ func TestUpdateDomain(t *testing.T) {
 
 	updatedDomain := domain
 	updatedDomain.Name = valid
-	updatedDomain.Alias = valid
+	updatedDomain.Route = valid
 
 	cases := []struct {
 		desc      string
@@ -319,8 +319,7 @@ func TestUpdateDomain(t *testing.T) {
 			session:  validSession,
 			domainID: domain.ID,
 			updateReq: domains.DomainReq{
-				Name:  &valid,
-				Alias: &valid,
+				Name: &valid,
 			},
 			updateRes: updatedDomain,
 			err:       nil,
@@ -330,8 +329,7 @@ func TestUpdateDomain(t *testing.T) {
 			session:  validSession,
 			domainID: "",
 			updateReq: domains.DomainReq{
-				Name:  &valid,
-				Alias: &valid,
+				Name: &valid,
 			},
 			updateErr: repoerr.ErrNotFound,
 			err:       svcerr.ErrUpdateEntity,
@@ -341,8 +339,7 @@ func TestUpdateDomain(t *testing.T) {
 			session:  validSession,
 			domainID: domain.ID,
 			updateReq: domains.DomainReq{
-				Name:  &valid,
-				Alias: &valid,
+				Name: &valid,
 			},
 			updateErr: errors.ErrMalformedEntity,
 			err:       svcerr.ErrUpdateEntity,

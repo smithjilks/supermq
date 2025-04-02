@@ -720,6 +720,61 @@ func (_c *Repository_RetrieveDomainByIDWithRoles_Call) RunAndReturn(run func(ctx
 	return _c
 }
 
+// RetrieveDomainByRoute provides a mock function for the type Repository
+func (_mock *Repository) RetrieveDomainByRoute(ctx context.Context, route string) (domains.Domain, error) {
+	ret := _mock.Called(ctx, route)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RetrieveDomainByRoute")
+	}
+
+	var r0 domains.Domain
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (domains.Domain, error)); ok {
+		return returnFunc(ctx, route)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) domains.Domain); ok {
+		r0 = returnFunc(ctx, route)
+	} else {
+		r0 = ret.Get(0).(domains.Domain)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, route)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// Repository_RetrieveDomainByRoute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveDomainByRoute'
+type Repository_RetrieveDomainByRoute_Call struct {
+	*mock.Call
+}
+
+// RetrieveDomainByRoute is a helper method to define mock.On call
+//   - ctx
+//   - route
+func (_e *Repository_Expecter) RetrieveDomainByRoute(ctx interface{}, route interface{}) *Repository_RetrieveDomainByRoute_Call {
+	return &Repository_RetrieveDomainByRoute_Call{Call: _e.mock.On("RetrieveDomainByRoute", ctx, route)}
+}
+
+func (_c *Repository_RetrieveDomainByRoute_Call) Run(run func(ctx context.Context, route string)) *Repository_RetrieveDomainByRoute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Repository_RetrieveDomainByRoute_Call) Return(domain domains.Domain, err error) *Repository_RetrieveDomainByRoute_Call {
+	_c.Call.Return(domain, err)
+	return _c
+}
+
+func (_c *Repository_RetrieveDomainByRoute_Call) RunAndReturn(run func(ctx context.Context, route string) (domains.Domain, error)) *Repository_RetrieveDomainByRoute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RetrieveEntitiesRolesActionsMembers provides a mock function for the type Repository
 func (_mock *Repository) RetrieveEntitiesRolesActionsMembers(ctx context.Context, entityIDs []string) ([]roles.EntityActionRole, []roles.EntityMemberRole, error) {
 	ret := _mock.Called(ctx, entityIDs)

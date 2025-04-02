@@ -12,11 +12,11 @@ import (
 
 var cmdDomains = []cobra.Command{
 	{
-		Use:   "create <name> <alias> <token>",
+		Use:   "create <name> <route> <token>",
 		Short: "Create Domain",
-		Long: "Create Domain with provided name and alias. \n" +
+		Long: "Create Domain with provided name and route. \n" +
 			"For example:\n" +
-			"\tsupermq-cli domains create domain_1 domain_1_alias $TOKEN\n",
+			"\tsupermq-cli domains create domain_1 domain_1_route $TOKEN\n",
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) != 3 {
 				logUsageCmd(*cmd, cmd.Use)
@@ -25,7 +25,7 @@ var cmdDomains = []cobra.Command{
 
 			dom := smqsdk.Domain{
 				Name:  args[0],
-				Alias: args[1],
+				Route: args[1],
 			}
 			d, err := sdk.CreateDomain(cmd.Context(), dom, args[2])
 			if err != nil {
@@ -108,9 +108,9 @@ var cmdDomains = []cobra.Command{
 	{
 		Use:   "update <domain_id> <JSON_string> <user_auth_token>",
 		Short: "Update domains",
-		Long: "Updates domains name, alias and metadata \n" +
+		Long: "Updates domains name, route and metadata \n" +
 			"Usage:\n" +
-			"\tsupermq-cli domains update <domain_id> '{\"name\":\"new name\", \"alias\":\"new_alias\", \"metadata\":{\"key\": \"value\"}}' $TOKEN \n",
+			"\tsupermq-cli domains update <domain_id> '{\"name\":\"new name\", \"route\":\"new_route\", \"metadata\":{\"key\": \"value\"}}' $TOKEN \n",
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) != 4 && len(args) != 3 {
 				logUsageCmd(*cmd, cmd.Use)

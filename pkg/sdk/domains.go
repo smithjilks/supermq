@@ -26,7 +26,7 @@ type Domain struct {
 	Name        string                    `json:"name,omitempty"`
 	Metadata    Metadata                  `json:"metadata,omitempty"`
 	Tags        []string                  `json:"tags,omitempty"`
-	Alias       string                    `json:"alias,omitempty"`
+	Route       string                    `json:"route,omitempty"`
 	Status      string                    `json:"status,omitempty"`
 	Permission  string                    `json:"permission,omitempty"`
 	CreatedBy   string                    `json:"created_by,omitempty"`

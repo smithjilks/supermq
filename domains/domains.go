@@ -100,7 +100,6 @@ type DomainReq struct {
 	Name      *string    `json:"name,omitempty"`
 	Metadata  *Metadata  `json:"metadata,omitempty"`
 	Tags      *[]string  `json:"tags,omitempty"`
-	Alias     *string    `json:"alias,omitempty"`
 	Status    *Status    `json:"status,omitempty"`
 	UpdatedBy *string    `json:"updated_by,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
@@ -111,7 +110,7 @@ type Domain struct {
 	Name      string                    `json:"name"`
 	Metadata  Metadata                  `json:"metadata,omitempty"`
 	Tags      []string                  `json:"tags,omitempty"`
-	Alias     string                    `json:"alias,omitempty"`
+	Route     string                    `json:"route,omitempty"`
 	Status    Status                    `json:"status"`
 	RoleID    string                    `json:"role_id,omitempty"`
 	RoleName  string                    `json:"role_name,omitempty"`
@@ -237,6 +236,9 @@ type Repository interface {
 
 	// RetrieveDomainByID retrieves a domain by its unique ID.
 	RetrieveDomainByID(ctx context.Context, id string) (Domain, error)
+
+	// RetrieveDomainByRoute retrieves a domain by its unique route.
+	RetrieveDomainByRoute(ctx context.Context, route string) (Domain, error)
 
 	// RetrieveAllDomainsByIDs retrieves for given Domain IDs.
 	RetrieveAllDomainsByIDs(ctx context.Context, pm Page) (DomainsPage, error)
