@@ -26,7 +26,7 @@ type Event interface {
 // Publisher specifies events publishing API.
 type Publisher interface {
 	// Publish publishes event to stream.
-	Publish(ctx context.Context, event Event) error
+	Publish(ctx context.Context, stream string, event Event) error
 
 	// Close gracefully closes event publisher's connection.
 	Close() error

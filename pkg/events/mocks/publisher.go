@@ -86,16 +86,16 @@ func (_c *Publisher_Close_Call) RunAndReturn(run func() error) *Publisher_Close_
 }
 
 // Publish provides a mock function for the type Publisher
-func (_mock *Publisher) Publish(ctx context.Context, event events.Event) error {
-	ret := _mock.Called(ctx, event)
+func (_mock *Publisher) Publish(ctx context.Context, stream string, event events.Event) error {
+	ret := _mock.Called(ctx, stream, event)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Publish")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, events.Event) error); ok {
-		r0 = returnFunc(ctx, event)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, events.Event) error); ok {
+		r0 = returnFunc(ctx, stream, event)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -109,14 +109,15 @@ type Publisher_Publish_Call struct {
 
 // Publish is a helper method to define mock.On call
 //   - ctx
+//   - stream
 //   - event
-func (_e *Publisher_Expecter) Publish(ctx interface{}, event interface{}) *Publisher_Publish_Call {
-	return &Publisher_Publish_Call{Call: _e.mock.On("Publish", ctx, event)}
+func (_e *Publisher_Expecter) Publish(ctx interface{}, stream interface{}, event interface{}) *Publisher_Publish_Call {
+	return &Publisher_Publish_Call{Call: _e.mock.On("Publish", ctx, stream, event)}
 }
 
-func (_c *Publisher_Publish_Call) Run(run func(ctx context.Context, event events.Event)) *Publisher_Publish_Call {
+func (_c *Publisher_Publish_Call) Run(run func(ctx context.Context, stream string, event events.Event)) *Publisher_Publish_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(events.Event))
+		run(args[0].(context.Context), args[1].(string), args[2].(events.Event))
 	})
 	return _c
 }
@@ -126,7 +127,7 @@ func (_c *Publisher_Publish_Call) Return(err error) *Publisher_Publish_Call {
 	return _c
 }
 
-func (_c *Publisher_Publish_Call) RunAndReturn(run func(ctx context.Context, event events.Event) error) *Publisher_Publish_Call {
+func (_c *Publisher_Publish_Call) RunAndReturn(run func(ctx context.Context, stream string, event events.Event) error) *Publisher_Publish_Call {
 	_c.Call.Return(run)
 	return _c
 }
