@@ -36,11 +36,11 @@ const (
 	clientID              = "clientID"
 	clientID1             = "clientID1"
 	subtopic              = "testSubtopic"
-	invalidChannelIDTopic = "ch/**/msg"
+	invalidChannelIDTopic = "c/**/m"
 )
 
 var (
-	topicMsg            = "ch/%s/msg"
+	topicMsg            = "c/%s/m"
 	topic               = fmt.Sprintf(topicMsg, chanID)
 	invalidTopic        = invalidValue
 	payload             = []byte("[{'n':'test-name', 'v': 1.2}]")

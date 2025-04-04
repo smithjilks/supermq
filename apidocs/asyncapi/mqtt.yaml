@@ -37,7 +37,7 @@ servers:
       - user-password: []
 
 channels:
-  ch/{channelID}/msg/{subtopic}:
+  c/{channelID}/m/{subtopic}:
     parameters:
       channelID:
         $ref: '#/components/parameters/channelID'

@@ -25,7 +25,7 @@ const (
 var (
 	errFailedSession  = errors.New("failed to obtain session from context")
 	errMalformedTopic = errors.New("malformed topic")
-	channelRegExp     = regexp.MustCompile(`^\/?ch\/([\w\-]+)\/msg(\/[^?]*)?(\?.*)?$`)
+	channelRegExp     = regexp.MustCompile(`^\/?c\/([\w\-]+)\/m(\/[^?]*)?(\?.*)?$`)
 )
 
 // EventStore is a struct used to store event streams in Redis.

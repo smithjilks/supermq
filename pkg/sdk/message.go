@@ -23,7 +23,7 @@ func (sdk mgSDK) SendMessage(ctx context.Context, chanName, msg, key string) err
 		subtopicPart = fmt.Sprintf("/%s", strings.ReplaceAll(chanNameParts[1], ".", "/"))
 	}
 
-	reqURL := fmt.Sprintf("%s/ch/%s/msg%s", sdk.httpAdapterURL, chanID, subtopicPart)
+	reqURL := fmt.Sprintf("%s/c/%s/m%s", sdk.httpAdapterURL, chanID, subtopicPart)
 
 	_, _, err := sdk.processRequest(ctx, http.MethodPost, reqURL, ClientPrefix+key, []byte(msg), nil, http.StatusAccepted)
 
