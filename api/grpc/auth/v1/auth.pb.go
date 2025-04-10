@@ -70,9 +70,9 @@ func (x *AuthNReq) GetToken() string {
 
 type AuthNRes struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                             // id
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`       // user id
-	DomainId      string                 `protobuf:"bytes,3,opt,name=domain_id,json=domainId,proto3" json:"domain_id,omitempty"` // domain id
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                              // token id
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`        // user id
+	UserRole      uint32                 `protobuf:"varint,3,opt,name=user_role,json=userRole,proto3" json:"user_role,omitempty"` // user role
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -121,11 +121,11 @@ func (x *AuthNRes) GetUserId() string {
 	return ""
 }
 
-func (x *AuthNRes) GetDomainId() string {
+func (x *AuthNRes) GetUserRole() uint32 {
 	if x != nil {
-		return x.DomainId
+		return x.UserRole
 	}
-	return ""
+	return 0
 }
 
 type AuthZReq struct {
@@ -382,7 +382,7 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\bAuthNRes\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1b\n" +
-	"\tdomain_id\x18\x03 \x01(\tR\bdomainId\"\xa2\x02\n" +
+	"\tuser_role\x18\x03 \x01(\rR\buserRole\"\xa2\x02\n" +
 	"\bAuthZReq\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\tR\x06domain\x12!\n" +
 	"\fsubject_type\x18\x02 \x01(\tR\vsubjectType\x12!\n" +

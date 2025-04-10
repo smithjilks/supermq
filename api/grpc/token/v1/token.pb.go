@@ -27,6 +27,7 @@ const (
 type IssueReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserRole      uint32                 `protobuf:"varint,2,opt,name=user_role,json=userRole,proto3" json:"user_role,omitempty"`
 	Type          uint32                 `protobuf:"varint,3,opt,name=type,proto3" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -67,6 +68,13 @@ func (x *IssueReq) GetUserId() string {
 		return x.UserId
 	}
 	return ""
+}
+
+func (x *IssueReq) GetUserRole() uint32 {
+	if x != nil {
+		return x.UserRole
+	}
+	return 0
 }
 
 func (x *IssueReq) GetType() uint32 {
@@ -187,9 +195,10 @@ var File_token_v1_token_proto protoreflect.FileDescriptor
 
 const file_token_v1_token_proto_rawDesc = "" +
 	"\n" +
-	"\x14token/v1/token.proto\x12\btoken.v1\"7\n" +
+	"\x14token/v1/token.proto\x12\btoken.v1\"T\n" +
 	"\bIssueReq\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
+	"\tuser_role\x18\x02 \x01(\rR\buserRole\x12\x12\n" +
 	"\x04type\x18\x03 \x01(\rR\x04type\"1\n" +
 	"\n" +
 	"RefreshReq\x12#\n" +
