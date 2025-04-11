@@ -36,17 +36,18 @@ const (
 	clientID              = "clientID"
 	clientID1             = "clientID1"
 	subtopic              = "testSubtopic"
-	invalidChannelIDTopic = "c/**/m"
+	invalidChannelIDTopic = "m/**/c"
 )
 
 var (
-	topicMsg            = "c/%s/m"
-	topic               = fmt.Sprintf(topicMsg, chanID)
+	domainID            = testsutil.GenerateUUID(&testing.T{})
+	topicMsg            = "/m/%s/c/%s"
+	topic               = fmt.Sprintf(topicMsg, domainID, chanID)
 	invalidTopic        = invalidValue
 	payload             = []byte("[{'n':'test-name', 'v': 1.2}]")
 	topics              = []string{topic}
 	invalidTopics       = []string{invalidValue}
-	invalidChanIDTopics = []string{fmt.Sprintf(topicMsg, invalidValue)}
+	invalidChanIDTopics = []string{fmt.Sprintf(topicMsg, domainID, invalidValue)}
 	// Test log messages for cases the handler does not provide a return value.
 	logBuffer     = bytes.Buffer{}
 	sessionClient = session.Session{
@@ -213,6 +214,7 @@ func TestAuthPublish(t *testing.T) {
 				ctx = session.NewContext(ctx, tc.session)
 			}
 			channelsCall := channels.On("Authorize", mock.Anything, &grpcChannelsV1.AuthzReq{
+				DomainId:   domainID,
 				ChannelId:  chanID,
 				ClientId:   clientID,
 				ClientType: policies.ClientType,
@@ -288,6 +290,7 @@ func TestAuthSubscribe(t *testing.T) {
 				ctx = session.NewContext(ctx, tc.session)
 			}
 			channelsCall := channels.On("Authorize", mock.Anything, &grpcChannelsV1.AuthzReq{
+				DomainId:   domainID,
 				ChannelId:  tc.channelID,
 				ClientId:   clientID1,
 				ClientType: policies.ClientType,

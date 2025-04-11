@@ -32,8 +32,12 @@ servers:
         default: '8186'
 
 channels:
-  'c/{channelID}/m/{subtopic}':
+  'm/{domainID}/c/{channelID}/{subtopic}':
     parameters:
+      domainID:
+        $ref: '#/components/parameters/domainID'
+        in: path
+        required: true
       channelID:
         $ref: '#/components/parameters/channelID'
         in: path
@@ -125,6 +129,11 @@ components:
 
         ```
   parameters:
+    domainID:
+      description: Domain ID associated with the channel and client.
+      schema:
+        type: string
+        format: uuid
     channelID:
       description: Channel ID connected to the Client ID defined in the username.
       schema:
