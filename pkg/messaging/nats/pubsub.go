@@ -43,6 +43,7 @@ func NewPubSub(ctx context.Context, url string, logger *slog.Logger, opts ...mes
 		publisher: publisher{
 			options: defaultOptions(),
 		},
+		logger: logger,
 	}
 
 	for _, opt := range opts {

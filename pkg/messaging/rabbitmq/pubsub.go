@@ -43,6 +43,7 @@ func NewPubSub(url string, logger *slog.Logger, opts ...messaging.Option) (messa
 		publisher: publisher{
 			options: defaultOptions(),
 		},
+		logger:        logger,
 		subscriptions: make(map[string]map[string]subscription),
 	}
 
