@@ -13,7 +13,6 @@ import (
 	"github.com/absmach/supermq/pkg/events"
 	"github.com/absmach/supermq/pkg/messaging"
 	broker "github.com/absmach/supermq/pkg/messaging/rabbitmq"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 var _ events.Subscriber = (*subEventStore)(nil)
@@ -30,33 +29,17 @@ var (
 )
 
 type subEventStore struct {
-	conn   *amqp.Connection
 	pubsub messaging.PubSub
-	logger *slog.Logger
 }
 
 func NewSubscriber(url string, logger *slog.Logger) (events.Subscriber, error) {
-	conn, err := amqp.Dial(url)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-	if err := ch.ExchangeDeclare(exchangeName, amqp.ExchangeTopic, true, false, false, false, nil); err != nil {
-		return nil, err
-	}
-
-	pubsub, err := broker.NewPubSub(url, logger, broker.Channel(ch), broker.Exchange(exchangeName))
+	pubsub, err := broker.NewPubSub(url, logger, broker.Prefix(eventsPrefix), broker.Exchange(exchangeName))
 	if err != nil {
 		return nil, err
 	}
 
 	return &subEventStore{
-		conn:   conn,
 		pubsub: pubsub,
-		logger: logger,
 	}, nil
 }
 
@@ -74,7 +57,6 @@ func (es *subEventStore) Subscribe(ctx context.Context, cfg events.SubscriberCon
 		Handler: &eventHandler{
 			handler: cfg.Handler,
 			ctx:     ctx,
-			logger:  es.logger,
 		},
 		DeliveryPolicy: messaging.DeliverNewPolicy,
 	}
@@ -83,7 +65,6 @@ func (es *subEventStore) Subscribe(ctx context.Context, cfg events.SubscriberCon
 }
 
 func (es *subEventStore) Close() error {
-	es.conn.Close()
 	return es.pubsub.Close()
 }
 
@@ -98,7 +79,6 @@ func (re event) Encode() (map[string]interface{}, error) {
 type eventHandler struct {
 	handler events.EventHandler
 	ctx     context.Context
-	logger  *slog.Logger
 }
 
 func (eh *eventHandler) Handle(msg *messaging.Message) error {
@@ -111,7 +91,7 @@ func (eh *eventHandler) Handle(msg *messaging.Message) error {
 	}
 
 	if err := eh.handler.Handle(eh.ctx, event); err != nil {
-		eh.logger.Warn(fmt.Sprintf("failed to handle rabbitmq event: %s", err))
+		return fmt.Errorf("failed to handle rabbitmq event: %s", err)
 	}
 
 	return nil
