@@ -15,8 +15,8 @@ import (
 
 const channelParts = 2
 
-func (sdk mgSDK) SendMessage(ctx context.Context, chanName, msg, domainID, key string) errors.SDKError {
-	chanNameParts := strings.SplitN(chanName, ".", channelParts)
+func (sdk mgSDK) SendMessage(ctx context.Context, domainID, topic, secret, msg string) errors.SDKError {
+	chanNameParts := strings.SplitN(topic, ".", channelParts)
 	chanID := chanNameParts[0]
 	subtopicPart := ""
 	if len(chanNameParts) == channelParts {
@@ -25,7 +25,7 @@ func (sdk mgSDK) SendMessage(ctx context.Context, chanName, msg, domainID, key s
 
 	reqURL := fmt.Sprintf("%s/m/%s/c/%s%s", sdk.httpAdapterURL, domainID, chanID, subtopicPart)
 
-	_, _, err := sdk.processRequest(ctx, http.MethodPost, reqURL, ClientPrefix+key, []byte(msg), nil, http.StatusAccepted)
+	_, _, err := sdk.processRequest(ctx, http.MethodPost, reqURL, ClientPrefix+secret, []byte(msg), nil, http.StatusAccepted)
 
 	return err
 }
