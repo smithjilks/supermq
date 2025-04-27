@@ -27,15 +27,15 @@ INTERNAL_PROTO_DIR=internal/proto
 INTERNAL_PROTO_FILES := $(shell find $(INTERNAL_PROTO_DIR) -name "*.proto" | sed 's|$(INTERNAL_PROTO_DIR)/||')
 
 ifneq ($(SMQ_MESSAGE_BROKER_TYPE),)
-    SMQ_MESSAGE_BROKER_TYPE := $(SMQ_MESSAGE_BROKER_TYPE)
+	SMQ_MESSAGE_BROKER_TYPE := $(SMQ_MESSAGE_BROKER_TYPE)
 else
-    SMQ_MESSAGE_BROKER_TYPE=msg_nats
+	SMQ_MESSAGE_BROKER_TYPE=msg_nats
 endif
 
 ifneq ($(SMQ_ES_TYPE),)
-    SMQ_ES_TYPE := $(SMQ_ES_TYPE)
+	SMQ_ES_TYPE := $(SMQ_ES_TYPE)
 else
-    SMQ_ES_TYPE=es_nats
+	SMQ_ES_TYPE=es_nats
 endif
 
 define compile_service
@@ -127,8 +127,8 @@ DIRS = consumers readers postgres internal
 test: mocks
 	mkdir -p coverage
 	@for dir in $(DIRS); do \
-        go test -v --race -failfast -count 1 -tags test -coverprofile=coverage/$$dir.out $$(go list ./... | grep $$dir | grep -v 'cmd'); \
-    done
+		go test -v --race -failfast -count 1 -tags test -coverprofile=coverage/$$dir.out $$(go list ./... | grep $$dir | grep -v 'cmd'); \
+	done
 	go test -v --race -failfast -count 1 -tags test -coverprofile=coverage/coverage.out $$(go list ./... | grep -v 'consumers\|readers\|postgres\|internal\|cmd\|middleware')
 
 define test_api_service
@@ -225,22 +225,18 @@ grpc_mtls_certs:
 
 check_tls:
 ifeq ($(GRPC_TLS),true)
-	@unset GRPC_MTLS
 	@echo "gRPC TLS is enabled"
-	GRPC_MTLS=
+	$(eval GRPC_MTLS :=)
 else
-	@unset GRPC_TLS
-	GRPC_TLS=
+	$(eval GRPC_TLS :=)
 endif
 
 check_mtls:
 ifeq ($(GRPC_MTLS),true)
-	@unset GRPC_TLS
 	@echo "gRPC MTLS is enabled"
-	GRPC_TLS=
+	$(eval GRPC_TLS :=)
 else
-	@unset GRPC_MTLS
-	GRPC_MTLS=
+	$(eval GRPC_MTLS :=)
 endif
 
 check_certs: check_mtls check_tls
