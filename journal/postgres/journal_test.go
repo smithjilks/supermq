@@ -56,7 +56,7 @@ var (
 		"identity":   testsutil.GenerateUUID(&testing.T{}),
 	}
 	clientAttributesV2 = map[string]interface{}{
-		"client_id": entityID,
+		"entity_id": entityID,
 		"metadata":  payload,
 	}
 	userAttributesV1 = map[string]interface{}{
@@ -711,15 +711,15 @@ func extractEntities(journals []journal.Journal, entityType journal.EntityType, 
 				entities = append(entities, j)
 			}
 		case journal.GroupEntity:
-			if strings.HasPrefix(j.Operation, "group.") && j.Attributes["id"] == entityID || j.Attributes["group_id"] == entityID {
+			if strings.HasPrefix(j.Operation, "group.") && (j.Attributes["id"] == entityID || j.Attributes["entity_id"] == entityID) {
 				entities = append(entities, j)
 			}
 		case journal.ClientEntity:
-			if strings.HasPrefix(j.Operation, "client.") && j.Attributes["id"] == entityID || j.Attributes["client_id"] == entityID {
+			if strings.HasPrefix(j.Operation, "client.") && (j.Attributes["id"] == entityID || j.Attributes["entity_id"] == entityID) {
 				entities = append(entities, j)
 			}
 		case journal.ChannelEntity:
-			if strings.HasPrefix(j.Operation, "channel.") && j.Attributes["id"] == entityID || j.Attributes["group_id"] == entityID {
+			if strings.HasPrefix(j.Operation, "channel.") && (j.Attributes["id"] == entityID || j.Attributes["entity_id"] == entityID) {
 				entities = append(entities, j)
 			}
 		}

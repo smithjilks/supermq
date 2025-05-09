@@ -150,7 +150,7 @@ func parseTopic(topic string) (string, string, error) {
 	subtopic := channelParts[3]
 
 	if subtopic == "" {
-		return subtopic, chanID, nil
+		return chanID, subtopic, nil
 	}
 
 	subtopic, err := url.QueryUnescape(subtopic)
