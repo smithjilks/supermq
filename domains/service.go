@@ -191,11 +191,37 @@ func (svc *service) SendInvitation(ctx context.Context, session authn.Session, i
 	}
 	invitation.InvitedBy = session.UserID
 
-	invitation.CreatedAt = time.Now()
+	invitation.CreatedAt = time.Now().UTC()
+
+	if invitation.Resend {
+		if err := svc.resendInvitation(ctx, invitation); err != nil {
+			return errors.Wrap(svcerr.ErrUpdateEntity, err)
+		}
+		return nil
+	}
 
 	if err := svc.repo.SaveInvitation(ctx, invitation); err != nil {
 		return errors.Wrap(svcerr.ErrCreateEntity, err)
 	}
+	return nil
+}
+
+func (svc *service) resendInvitation(ctx context.Context, invitation Invitation) error {
+	inv, err := svc.repo.RetrieveInvitation(ctx, invitation.InviteeUserID, invitation.DomainID)
+	if err != nil {
+		return err
+	}
+	if !inv.ConfirmedAt.IsZero() {
+		return svcerr.ErrInvitationAlreadyAccepted
+	}
+	if !inv.RejectedAt.IsZero() {
+		invitation.RejectedAt = time.Time{}
+		invitation.UpdatedAt = time.Now().UTC()
+		if err := svc.repo.UpdateRejection(ctx, invitation); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -250,7 +276,7 @@ func (svc *service) AcceptInvitation(ctx context.Context, session authn.Session,
 		return Invitation{}, errors.Wrap(svcerr.ErrUpdateEntity, err)
 	}
 
-	inv.ConfirmedAt = time.Now()
+	inv.ConfirmedAt = time.Now().UTC()
 	inv.UpdatedAt = inv.ConfirmedAt
 
 	if err := svc.repo.UpdateConfirmation(ctx, inv); err != nil {
@@ -278,7 +304,7 @@ func (svc *service) RejectInvitation(ctx context.Context, session authn.Session,
 		return svcerr.ErrInvitationAlreadyRejected
 	}
 
-	inv.RejectedAt = time.Now()
+	inv.RejectedAt = time.Now().UTC()
 	inv.UpdatedAt = inv.RejectedAt
 
 	if err := svc.repo.UpdateRejection(ctx, inv); err != nil {

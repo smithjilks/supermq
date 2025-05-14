@@ -111,6 +111,7 @@ func (req freezeDomainReq) validate() error {
 type sendInvitationReq struct {
 	InviteeUserID string `json:"invitee_user_id,omitempty"`
 	RoleID        string `json:"role_id,omitempty"`
+	Resend        bool   `json:"resend,omitempty"`
 }
 
 func (req *sendInvitationReq) validate() error {

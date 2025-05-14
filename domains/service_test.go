@@ -625,12 +625,22 @@ func TestListDomains(t *testing.T) {
 func TestSendInvitation(t *testing.T) {
 	svc := newService()
 
+	rejectedInvitation := validInvitation
+	rejectedInvitation.RejectedAt = time.Now()
+	acceptedInvitation := validInvitation
+	acceptedInvitation.ConfirmedAt = time.Now()
+	resentInvitation := validInvitation
+	resentInvitation.Resend = true
+
 	cases := []struct {
 		desc                string
 		session             authn.Session
 		req                 domains.Invitation
 		retrieveRoleErr     error
 		createInvitationErr error
+		retrieveInvRes      domains.Invitation
+		retrieveInvErr      error
+		updateRejectionErr  error
 		err                 error
 	}{
 		{
@@ -657,16 +667,44 @@ func TestSendInvitation(t *testing.T) {
 			createInvitationErr: repoerr.ErrCreateEntity,
 			err:                 svcerr.ErrCreateEntity,
 		},
+		{
+			desc:           "resend invitation successfully",
+			session:        validSession,
+			req:            resentInvitation,
+			retrieveInvRes: rejectedInvitation,
+			retrieveInvErr: nil,
+			err:            nil,
+		},
+		{
+			desc:           "resend invitation with failed to retrieve invitation",
+			session:        validSession,
+			req:            resentInvitation,
+			retrieveInvRes: domains.Invitation{},
+			retrieveInvErr: repoerr.ErrNotFound,
+			err:            svcerr.ErrUpdateEntity,
+		},
+		{
+			desc:           "resend an invitation that is already accepted",
+			session:        validSession,
+			req:            resentInvitation,
+			retrieveInvRes: acceptedInvitation,
+			retrieveInvErr: nil,
+			err:            svcerr.ErrUpdateEntity,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			repoCall := drepo.On("RetrieveRole", context.Background(), tc.req.RoleID).Return(roles.Role{}, tc.retrieveRoleErr)
 			repoCall1 := drepo.On("SaveInvitation", context.Background(), mock.Anything).Return(tc.createInvitationErr)
+			repoCall2 := drepo.On("RetrieveInvitation", context.Background(), tc.req.InviteeUserID, tc.req.DomainID).Return(tc.retrieveInvRes, tc.retrieveInvErr)
+			repoCall3 := drepo.On("UpdateRejection", context.Background(), mock.Anything).Return(tc.updateRejectionErr)
 			err := svc.SendInvitation(context.Background(), tc.session, tc.req)
 			assert.True(t, errors.Contains(err, tc.err))
 			repoCall.Unset()
 			repoCall1.Unset()
+			repoCall2.Unset()
+			repoCall3.Unset()
 		})
 	}
 }
