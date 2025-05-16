@@ -29,6 +29,7 @@ var (
 		ID:          testsutil.GenerateUUID(&testing.T{}),
 		Domain:      testsutil.GenerateUUID(&testing.T{}),
 		Name:        namegen.Generate(),
+		Tags:        []string{"tag1", "tag2"},
 		Description: strings.Repeat("a", 64),
 		Metadata:    map[string]interface{}{"key": "value"},
 		CreatedAt:   time.Now().UTC().Truncate(time.Microsecond),
@@ -347,6 +348,67 @@ func TestUpdate(t *testing.T) {
 				case "metadata":
 					assert.Equal(t, tc.group.Metadata, group.Metadata, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.group.Metadata, group.Metadata))
 				}
+			}
+		})
+	}
+}
+
+func TestUpdateTags(t *testing.T) {
+	t.Cleanup(func() {
+		_, err := db.Exec("DELETE FROM groups")
+		require.Nil(t, err, fmt.Sprintf("clean groups unexpected error: %s", err))
+	})
+
+	repo := postgres.New(database)
+
+	_, err := repo.Save(context.Background(), validGroup)
+	require.Nil(t, err, fmt.Sprintf("save group unexpected error: %s", err))
+
+	cases := []struct {
+		desc  string
+		group groups.Group
+		err   error
+	}{
+		{
+			desc: "update group tags",
+			group: groups.Group{
+				ID:        validGroup.ID,
+				Tags:      []string{"tag3", "tag4"},
+				UpdatedAt: validTimestamp,
+				UpdatedBy: testsutil.GenerateUUID(t),
+			},
+			err: nil,
+		},
+		{
+			desc: "update group with invalid ID",
+			group: groups.Group{
+				ID:        testsutil.GenerateUUID(t),
+				Tags:      []string{"tag3", "tag4"},
+				UpdatedAt: validTimestamp,
+				UpdatedBy: testsutil.GenerateUUID(t),
+			},
+			err: repoerr.ErrNotFound,
+		},
+		{
+			desc: "update group with empty ID",
+			group: groups.Group{
+				Tags:      []string{"tag3", "tag4"},
+				UpdatedAt: validTimestamp,
+				UpdatedBy: testsutil.GenerateUUID(t),
+			},
+			err: repoerr.ErrNotFound,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			group, err := repo.UpdateTags(context.Background(), tc.group)
+			assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+			if err == nil {
+				assert.Equal(t, tc.group.ID, group.ID, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.group.ID, group.ID))
+				assert.Equal(t, tc.group.UpdatedAt, group.UpdatedAt, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.group.UpdatedAt, group.UpdatedAt))
+				assert.Equal(t, tc.group.UpdatedBy, group.UpdatedBy, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.group.UpdatedBy, group.UpdatedBy))
+				assert.Equal(t, tc.group.Tags, group.Tags, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.group.Tags, group.Tags))
 			}
 		})
 	}

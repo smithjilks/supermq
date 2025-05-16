@@ -64,6 +64,15 @@ func Migration() (*migrate.MemoryMigrationSource, error) {
 					`ALTER TABLE groups ADD CONSTRAINT groups_domain_id_name_key UNIQUE (domain_id, name)`,
 				},
 			},
+			{
+				Id: "groups_04",
+				Up: []string{
+					`ALTER TABLE groups ADD COLUMN tags TEXT[]`,
+				},
+				Down: []string{
+					`ALTER TABLE groups DROP COLUMN tags`,
+				},
+			},
 		},
 	}
 
