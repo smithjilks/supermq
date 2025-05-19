@@ -56,7 +56,7 @@ func (s *grpcServer) Start() error {
 
 	switch {
 	case s.Config.CertFile != "" || s.Config.KeyFile != "":
-		certificate, err := LoadX509KeyPair(s.Config.CertFile, s.Config.KeyFile)
+		certificate, err := loadX509KeyPair(s.Config.CertFile, s.Config.KeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to load auth gRPC client certificates: %w", err)
 		}
@@ -67,7 +67,7 @@ func (s *grpcServer) Start() error {
 
 		var mtlsCA string
 		// Loading Server CA file
-		rootCA, err := LoadRootCACerts(s.Config.ServerCAFile)
+		rootCA, err := loadRootCACerts(s.Config.ServerCAFile)
 		if err != nil {
 			return fmt.Errorf("failed to load root ca file: %w", err)
 		}
@@ -80,7 +80,7 @@ func (s *grpcServer) Start() error {
 		}
 
 		// Loading Client CA File
-		clientCA, err := LoadRootCACerts(s.Config.ClientCAFile)
+		clientCA, err := loadRootCACerts(s.Config.ClientCAFile)
 		if err != nil {
 			return fmt.Errorf("failed to load client ca file: %w", err)
 		}
@@ -149,7 +149,7 @@ func readFileOrData(input string) ([]byte, error) {
 	return []byte(input), nil
 }
 
-func LoadRootCACerts(input string) (*x509.CertPool, error) {
+func loadRootCACerts(input string) (*x509.CertPool, error) {
 	pemData, err := readFileOrData(input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load root CA data: %w", err)
@@ -165,7 +165,7 @@ func LoadRootCACerts(input string) (*x509.CertPool, error) {
 	return nil, nil
 }
 
-func LoadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
+func loadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
 	cert, err := readFileOrData(certFile)
 	if err != nil {
 		return tls.Certificate{}, fmt.Errorf("failed to read cert: %v", err)
