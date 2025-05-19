@@ -94,7 +94,7 @@ func TestHandle(t *testing.T) {
 				"number":      float64(rand.Intn(1000)),
 				"metadata":    payload,
 			},
-			err: errors.New("missing operation"),
+			err: nil,
 		},
 		{
 			desc: "with empty operation",
@@ -106,7 +106,7 @@ func TestHandle(t *testing.T) {
 				"number":      float64(rand.Intn(1000)),
 				"metadata":    payload,
 			},
-			err: errors.New("missing operation"),
+			err: nil,
 		},
 		{
 			desc: "with invalid operation",
@@ -118,7 +118,7 @@ func TestHandle(t *testing.T) {
 				"number":      float64(rand.Intn(1000)),
 				"metadata":    payload,
 			},
-			err: errors.New("missing operation"),
+			err: nil,
 		},
 		{
 			desc: "with missing occurred_at",
@@ -129,7 +129,7 @@ func TestHandle(t *testing.T) {
 				"number":    float64(rand.Intn(1000)),
 				"metadata":  payload,
 			},
-			err: aevents.ErrMissingOccurredAt,
+			err: nil,
 		},
 		{
 			desc: "with empty occurred_at",
@@ -141,7 +141,7 @@ func TestHandle(t *testing.T) {
 				"number":      float64(rand.Intn(1000)),
 				"metadata":    payload,
 			},
-			err: aevents.ErrMissingOccurredAt,
+			err: nil,
 		},
 		{
 			desc: "with invalid occurred_at",
@@ -153,7 +153,7 @@ func TestHandle(t *testing.T) {
 				"number":      float64(rand.Intn(1000)),
 				"metadata":    payload,
 			},
-			err: aevents.ErrMissingOccurredAt,
+			err: nil,
 		},
 		{
 			desc: "with missing metadata",
@@ -197,7 +197,7 @@ func TestHandle(t *testing.T) {
 				"occurred_at": float64(time.Now().UnixNano()),
 				"metadata":    payload,
 			},
-			err: errors.New("missing attributes"),
+			err: nil,
 		},
 		{
 			desc: "with empty attributes",
@@ -249,7 +249,7 @@ func TestHandle(t *testing.T) {
 				"metadata":    payload,
 			},
 			repoErr: repoerr.ErrCreateEntity,
-			err:     repoerr.ErrCreateEntity,
+			err:     nil,
 		},
 	}
 

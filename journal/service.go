@@ -25,6 +25,11 @@ const (
 	messagingUnsubscribe = "messaging.client_unsubscribe"
 )
 
+var (
+	errSaveJournal     = errors.New("failed to save journal")
+	errHandleTelemetry = errors.New("failed to handle client telemetry")
+)
+
 type service struct {
 	idProvider supermq.IDProvider
 	repository Repository
@@ -45,10 +50,10 @@ func (svc *service) Save(ctx context.Context, journal Journal) error {
 	journal.ID = id
 
 	if err := svc.repository.Save(ctx, journal); err != nil {
-		return err
+		return errors.Wrap(errSaveJournal, err)
 	}
 	if err := svc.handleTelemetry(ctx, journal); err != nil {
-		return err
+		return errors.Wrap(errHandleTelemetry, err)
 	}
 
 	return nil
@@ -108,7 +113,7 @@ func (svc *service) handleTelemetry(ctx context.Context, journal Journal) error 
 }
 
 func (svc *service) addClientTelemetry(ctx context.Context, journal Journal) error {
-	ce, err := toClientEvent(journal)
+	ce, err := toClientEvent(journal, true)
 	if err != nil {
 		return err
 	}
@@ -122,7 +127,7 @@ func (svc *service) addClientTelemetry(ctx context.Context, journal Journal) err
 }
 
 func (svc *service) removeClientTelemetry(ctx context.Context, journal Journal) error {
-	ce, err := toClientEvent(journal)
+	ce, err := toClientEvent(journal, false)
 	if err != nil {
 		return err
 	}
@@ -201,7 +206,14 @@ func (svc *service) updateMessageCount(ctx context.Context, journal Journal) err
 	if err != nil {
 		return err
 	}
-	if err := svc.repository.IncrementInboundMessages(ctx, ae.clientID); err != nil {
+	ct := ClientTelemetry{
+		ClientID:  ae.clientID,
+		DomainID:  ae.domainID,
+		FirstSeen: ae.occurredAt,
+		LastSeen:  ae.occurredAt,
+	}
+
+	if err := svc.repository.IncrementInboundMessages(ctx, ct); err != nil {
 		return err
 	}
 	if err := svc.repository.IncrementOutboundMessages(ctx, ae.channelID, ae.subtopic); err != nil {
@@ -216,9 +228,8 @@ type clientEvent struct {
 	createdAt time.Time
 }
 
-func toClientEvent(journal Journal) (clientEvent, error) {
+func toClientEvent(journal Journal, isCreate bool) (clientEvent, error) {
 	var createdAt time.Time
-	var err error
 	id, err := getStringAttribute(journal, "id")
 	if err != nil {
 		return clientEvent{}, err
@@ -228,11 +239,13 @@ func toClientEvent(journal Journal) (clientEvent, error) {
 		return clientEvent{}, err
 	}
 
-	createdAtStr := journal.Attributes["created_at"].(string)
-	if createdAtStr != "" {
-		createdAt, err = time.Parse(time.RFC3339, createdAtStr)
-		if err != nil {
-			return clientEvent{}, fmt.Errorf("invalid created_at format")
+	if isCreate {
+		createdAtStr := journal.Attributes["created_at"].(string)
+		if createdAtStr != "" {
+			createdAt, err = time.Parse(time.RFC3339, createdAtStr)
+			if err != nil {
+				return clientEvent{}, fmt.Errorf("invalid created_at format")
+			}
 		}
 	}
 	return clientEvent{
@@ -245,9 +258,11 @@ func toClientEvent(journal Journal) (clientEvent, error) {
 type adapterEvent struct {
 	clientID     string
 	channelID    string
+	domainID     string
 	subscriberID string
 	topic        string
 	subtopic     string
+	occurredAt   time.Time
 }
 
 func toPublishEvent(journal Journal) (adapterEvent, error) {
@@ -259,15 +274,21 @@ func toPublishEvent(journal Journal) (adapterEvent, error) {
 	if err != nil {
 		return adapterEvent{}, err
 	}
+	domainID, err := getStringAttribute(journal, "domain_id")
+	if err != nil {
+		return adapterEvent{}, err
+	}
 	subtopic, err := getStringAttribute(journal, "subtopic")
 	if err != nil {
 		return adapterEvent{}, err
 	}
 
 	return adapterEvent{
-		clientID:  clientID,
-		channelID: channelID,
-		subtopic:  subtopic,
+		clientID:   clientID,
+		channelID:  channelID,
+		domainID:   domainID,
+		subtopic:   subtopic,
+		occurredAt: journal.OccurredAt,
 	}, nil
 }
 

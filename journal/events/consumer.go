@@ -6,6 +6,7 @@ package events
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/absmach/supermq/journal"
@@ -13,7 +14,12 @@ import (
 	"github.com/absmach/supermq/pkg/events/store"
 )
 
-var ErrMissingOccurredAt = errors.New("missing occurred_at")
+var (
+	ErrMissingOccurredAt = errors.New("missing occurred_at")
+	errMissingOperation  = errors.New("missing operation")
+	errMissingAttributes = errors.New("missing attributes")
+	errMsg               = "failed to save journal"
+)
 
 // Start method starts consuming messages received from Event store.
 func Start(ctx context.Context, consumer string, sub events.Subscriber, service journal.Service) error {
@@ -35,22 +41,27 @@ func Handle(service journal.Service) handleFunc {
 
 		operation, ok := data["operation"].(string)
 		if !ok {
-			return errors.New("missing operation")
+			// Error is logged instead of being returned to avoid redelivering of the event.
+			slog.Error(errMsg, "error", errMissingOperation)
+			return nil
 		}
 		delete(data, "operation")
 
 		if operation == "" {
-			return errors.New("missing operation")
+			slog.Error(errMsg, "error", errMissingOperation)
+			return nil
 		}
 
 		occurredAt, ok := data["occurred_at"].(float64)
 		if !ok {
-			return ErrMissingOccurredAt
+			slog.Error(errMsg, "error", ErrMissingOccurredAt)
+			return nil
 		}
 		delete(data, "occurred_at")
 
 		if occurredAt == 0 {
-			return ErrMissingOccurredAt
+			slog.Error(errMsg, "error", ErrMissingOccurredAt)
+			return nil
 		}
 
 		metadata, ok := data["metadata"].(map[string]interface{})
@@ -60,7 +71,8 @@ func Handle(service journal.Service) handleFunc {
 		delete(data, "metadata")
 
 		if len(data) == 0 {
-			return errors.New("missing attributes")
+			slog.Error(errMsg, "error", errMissingAttributes)
+			return nil
 		}
 
 		j := journal.Journal{
@@ -69,8 +81,11 @@ func Handle(service journal.Service) handleFunc {
 			Attributes: data,
 			Metadata:   metadata,
 		}
+		if err := service.Save(ctx, j); err != nil {
+			slog.Error(errMsg, "error", err)
+		}
 
-		return service.Save(ctx, j)
+		return nil
 	}
 }
 
