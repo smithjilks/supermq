@@ -1057,203 +1057,304 @@ func TestUpdate(t *testing.T) {
 
 	user1 := generateUser(t, users.EnabledStatus, repo)
 	user2 := generateUser(t, users.DisabledStatus, repo)
+	user3 := generateUser(t, users.EnabledStatus, repo)
+
+	updatedMetadata := users.Metadata{"update": namesgen.Generate()}
+	malformedMetadata := users.Metadata{"update": make(chan int)}
+	updatedLastName := namesgen.Generate()
+	updatedFirstName := namesgen.Generate()
+	updateTags := namesgen.GenerateMultiple(5)
+	updatedProfilePicture := namesgen.Generate()
+	adminRole := users.AdminRole
+	updatedEmail := namesgen.Generate() + emailSuffix
+	emptyName := ""
+	emptyTags := []string{}
+	allRole := users.AllRole
 
 	cases := []struct {
-		desc   string
-		update string
-		user   users.User
-		err    error
+		desc    string
+		update  string
+		userID  string
+		userReq users.UserReq
+		userRes users.User
+		err     error
 	}{
 		{
 			desc:   "update metadata for enabled user",
 			update: "metadata",
-			user: users.User{
-				ID: user1.ID,
-				Metadata: users.Metadata{
-					"update": namesgen.Generate(),
-				},
+			userID: user1.ID,
+			userReq: users.UserReq{
+				Metadata: &updatedMetadata,
+			},
+			userRes: users.User{
+				Metadata: updatedMetadata,
 			},
 			err: nil,
 		},
 		{
 			desc:   "update malformed metadata for enabled user",
 			update: "metadata",
-			user: users.User{
-				ID: user1.ID,
-				Metadata: users.Metadata{
-					"update": make(chan int),
-				},
+			userID: user1.ID,
+			userReq: users.UserReq{
+				Metadata: &malformedMetadata,
 			},
 			err: repoerr.ErrUpdateEntity,
 		},
 		{
+			desc:   "update empty metadata for enabled user",
+			update: "metadata",
+			userID: user3.ID,
+			userReq: users.UserReq{
+				Metadata: &users.Metadata{},
+			},
+			userRes: users.User{
+				Metadata: users.Metadata{},
+			},
+			err: nil,
+		},
+		{
 			desc:   "update metadata for disabled user",
 			update: "metadata",
-			user: users.User{
-				ID: user2.ID,
-				Metadata: users.Metadata{
-					"update": namesgen.Generate(),
-				},
+			userID: user2.ID,
+			userReq: users.UserReq{
+				Metadata: &updatedMetadata,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
 			desc:   "update first name for enabled user",
 			update: "first_name",
-			user: users.User{
-				ID:        user1.ID,
-				FirstName: namesgen.Generate(),
+			userID: user1.ID,
+			userReq: users.UserReq{
+				FirstName: &updatedFirstName,
+			},
+			userRes: users.User{
+				FirstName: updatedFirstName,
 			},
 			err: nil,
 		},
 		{
+			desc:   "update empty first name for enabled user",
+			update: "first_name",
+			userID: user3.ID,
+			userReq: users.UserReq{
+				FirstName: &emptyName,
+			},
+			userRes: user3,
+			err:     nil,
+		},
+		{
 			desc:   "update first name for disabled user",
 			update: "first_name",
-			user: users.User{
-				ID:        user2.ID,
-				FirstName: namesgen.Generate(),
+			userID: user2.ID,
+			userReq: users.UserReq{
+				FirstName: &updatedFirstName,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
 			desc:   "update metadata for invalid user",
 			update: "metadata",
-			user: users.User{
-				ID: testsutil.GenerateUUID(t),
-				Metadata: users.Metadata{
-					"update": namesgen.Generate(),
-				},
+			userID: testsutil.GenerateUUID(t),
+			userReq: users.UserReq{
+				Metadata: &updatedMetadata,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
 			desc:   "update first name for empty user",
 			update: "first_name",
-			user: users.User{
-				FirstName: namesgen.Generate(),
+			userID: "",
+			userReq: users.UserReq{
+				FirstName: &updatedFirstName,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
 			desc:   "update last name for enabled user",
 			update: "last_name",
-			user: users.User{
-				ID:       user1.ID,
-				LastName: namesgen.Generate(),
+			userID: user1.ID,
+			userReq: users.UserReq{
+				LastName: &updatedLastName,
+			},
+			userRes: users.User{
+				LastName: updatedLastName,
 			},
 			err: nil,
 		},
 		{
+			desc:   "update empty last name for enabled user",
+			update: "last_name",
+			userID: user3.ID,
+			userReq: users.UserReq{
+				LastName: &emptyName,
+			},
+			userRes: user3,
+			err:     nil,
+		},
+		{
 			desc:   "update last name for disabled user",
 			update: "last_name",
-			user: users.User{
-				ID:       user2.ID,
-				LastName: namesgen.Generate(),
+			userID: user2.ID,
+			userReq: users.UserReq{
+				LastName: &updatedLastName,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
 			desc:   "update last name for invalid user",
 			update: "last_name",
-			user: users.User{
-				ID:       testsutil.GenerateUUID(t),
-				LastName: namesgen.Generate(),
+			userID: testsutil.GenerateUUID(t),
+			userReq: users.UserReq{
+				LastName: &updatedLastName,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
-			desc: "update tags for enabled user",
-			user: users.User{
-				ID:   user1.ID,
-				Tags: namesgen.GenerateMultiple(5),
+			desc:   "update tags for enabled user",
+			userID: user1.ID,
+			userReq: users.UserReq{
+				Tags: &updateTags,
+			},
+			userRes: users.User{
+				Tags: updateTags,
 			},
 			err: nil,
 		},
 		{
-			desc: "update tags for disabled user",
-			user: users.User{
-				ID:   user2.ID,
-				Tags: namesgen.GenerateMultiple(5),
+			desc:   "update empty tags for enabled user",
+			userID: user3.ID,
+			userReq: users.UserReq{
+				Tags: &emptyTags,
 			},
-			err: repoerr.ErrNotFound,
-		},
-		{
-			desc: "update tags for invalid user",
-			user: users.User{
-				ID:   testsutil.GenerateUUID(t),
-				Tags: namesgen.GenerateMultiple(5),
-			},
-			err: repoerr.ErrNotFound,
-		},
-		{
-			desc: "update profile picture for enabled user",
-			user: users.User{
-				ID:             user1.ID,
-				ProfilePicture: namesgen.Generate(),
+			userRes: users.User{
+				Tags: []string{},
 			},
 			err: nil,
 		},
 		{
-			desc: "update profile picture for disabled user",
-			user: users.User{
-				ID:             user2.ID,
-				ProfilePicture: namesgen.Generate(),
+			desc:   "update tags for disabled user",
+			userID: user2.ID,
+			userReq: users.UserReq{
+				Tags: &updateTags,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
-			desc: "update profile picture for invalid user",
-			user: users.User{
-				ID:             testsutil.GenerateUUID(t),
-				ProfilePicture: namesgen.Generate(),
+			desc:   "update tags for invalid user",
+			userID: testsutil.GenerateUUID(t),
+			userReq: users.UserReq{
+				Tags: &updateTags,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
-			desc: "update role for enabled user",
-			user: users.User{
-				ID:   user1.ID,
-				Role: users.AdminRole,
+			desc:   "update profile picture for enabled user",
+			userID: user1.ID,
+			userReq: users.UserReq{
+				ProfilePicture: &updatedProfilePicture,
+			},
+			userRes: users.User{
+				ProfilePicture: updatedProfilePicture,
 			},
 			err: nil,
 		},
 		{
-			desc: "update role for disabled user",
-			user: users.User{
-				ID:   user2.ID,
-				Role: users.AdminRole,
+			desc:   "update empty profile picture for enabled user",
+			userID: user3.ID,
+			userReq: users.UserReq{
+				ProfilePicture: &emptyName,
 			},
-			err: repoerr.ErrNotFound,
-		},
-		{
-			desc: "update role for invalid user",
-			user: users.User{
-				ID:   testsutil.GenerateUUID(t),
-				Role: users.AdminRole,
-			},
-			err: repoerr.ErrNotFound,
-		},
-		{
-			desc: "update email for enabled user",
-			user: users.User{
-				ID:    user1.ID,
-				Email: namesgen.Generate() + emailSuffix,
+			userRes: users.User{
+				ProfilePicture: emptyName,
 			},
 			err: nil,
 		},
 		{
-			desc: "update email for disabled user",
-			user: users.User{
-				ID:    user2.ID,
-				Email: namesgen.Generate() + emailSuffix,
+			desc:   "update profile picture for disabled user",
+			userID: user2.ID,
+			userReq: users.UserReq{
+				ProfilePicture: &updatedProfilePicture,
 			},
 			err: repoerr.ErrNotFound,
 		},
 		{
-			desc: "update email for invalid user",
-			user: users.User{
-				ID:    testsutil.GenerateUUID(t),
-				Email: namesgen.Generate() + emailSuffix,
+			desc:   "update profile picture for invalid user",
+			userID: testsutil.GenerateUUID(t),
+			userReq: users.UserReq{
+				ProfilePicture: &updatedProfilePicture,
+			},
+			err: repoerr.ErrNotFound,
+		},
+		{
+			desc:   "update role for enabled user",
+			userID: user1.ID,
+			userReq: users.UserReq{
+				Role: &adminRole,
+			},
+			userRes: users.User{
+				Role: adminRole,
+			},
+			err: nil,
+		},
+		{
+			desc:   "update all role for enabled user",
+			userID: user3.ID,
+			userReq: users.UserReq{
+				Role: &allRole,
+			},
+			userRes: user3,
+			err:     nil,
+		},
+		{
+			desc:   "update role for disabled user",
+			userID: user2.ID,
+			userReq: users.UserReq{
+				Role: &adminRole,
+			},
+			err: repoerr.ErrNotFound,
+		},
+		{
+			desc:   "update role for invalid user",
+			userID: testsutil.GenerateUUID(t),
+			userReq: users.UserReq{
+				Role: &adminRole,
+			},
+			err: repoerr.ErrNotFound,
+		},
+		{
+			desc:   "update email for enabled user",
+			userID: user1.ID,
+			userReq: users.UserReq{
+				Email: &updatedEmail,
+			},
+			userRes: users.User{
+				Email: updatedEmail,
+			},
+			err: nil,
+		},
+		{
+			desc:   "update empty email for enabled user",
+			userID: user3.ID,
+			userReq: users.UserReq{
+				Email: &emptyName,
+			},
+			userRes: user3,
+			err:     nil,
+		},
+		{
+			desc:   "update email for disabled user",
+			userID: user2.ID,
+			userReq: users.UserReq{
+				Email: &updatedEmail,
+			},
+			err: repoerr.ErrNotFound,
+		},
+		{
+			desc:   "update email for invalid user",
+			userID: testsutil.GenerateUUID(t),
+			userReq: users.UserReq{
+				Email: &updatedEmail,
 			},
 			err: repoerr.ErrNotFound,
 		},
@@ -1261,29 +1362,33 @@ func TestUpdate(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			c.user.UpdatedAt = time.Now().UTC().Truncate(time.Millisecond)
-			c.user.UpdatedBy = testsutil.GenerateUUID(t)
-			expected, err := repo.Update(context.Background(), c.user)
+			updatedAt := time.Now().UTC().Truncate(time.Millisecond)
+			updatedBy := testsutil.GenerateUUID(t)
+			c.userReq.UpdatedAt = &updatedAt
+			c.userReq.UpdatedBy = &updatedBy
+			c.userRes.UpdatedAt = updatedAt
+			c.userRes.UpdatedBy = updatedBy
+			expected, err := repo.Update(context.Background(), c.userID, c.userReq)
 			assert.True(t, errors.Contains(err, c.err), fmt.Sprintf("expected %s to contain %s\n", err, c.err))
 			if err == nil {
 				switch c.update {
 				case "metadata":
-					assert.Equal(t, c.user.Metadata, expected.Metadata)
+					assert.Equal(t, c.userRes.Metadata, expected.Metadata)
 				case "first_name":
-					assert.Equal(t, c.user.FirstName, expected.FirstName)
+					assert.Equal(t, c.userRes.FirstName, expected.FirstName)
 				case "last_name":
-					assert.Equal(t, c.user.LastName, expected.LastName)
+					assert.Equal(t, c.userRes.LastName, expected.LastName)
 				case "tags":
-					assert.Equal(t, c.user.Tags, expected.Tags)
+					assert.Equal(t, c.userRes.Tags, expected.Tags)
 				case "profile_picture":
-					assert.Equal(t, c.user.ProfilePicture, expected.ProfilePicture)
+					assert.Equal(t, c.userRes.ProfilePicture, expected.ProfilePicture)
 				case "role":
-					assert.Equal(t, c.user.Role, expected.Role)
+					assert.Equal(t, c.userRes.Role, expected.Role)
 				case "email":
-					assert.Equal(t, c.user.Email, expected.Email)
+					assert.Equal(t, c.userRes.Email, expected.Email)
 				}
-				assert.Equal(t, c.user.UpdatedAt, expected.UpdatedAt)
-				assert.Equal(t, c.user.UpdatedBy, expected.UpdatedBy)
+				assert.Equal(t, c.userRes.UpdatedAt, expected.UpdatedAt)
+				assert.Equal(t, c.userRes.UpdatedBy, expected.UpdatedBy)
 			}
 		})
 	}
