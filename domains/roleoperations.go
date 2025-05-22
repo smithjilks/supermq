@@ -13,6 +13,15 @@ const (
 	OpRetrieveDomain
 	OpEnableDomain
 	OpDisableDomain
+	OpSendInvitation
+	OpAcceptInvitation
+	OpCreateDomain
+	OpFreezeDomain
+	OpListDomains
+	OpViewInvitation
+	OpListInvitations
+	OpRejectInvitation
+	OpDeleteInvitation
 )
 
 var expectedOperations = []svcutil.Operation{
@@ -22,15 +31,24 @@ var expectedOperations = []svcutil.Operation{
 	OpDisableDomain,
 }
 
-var operationNames = []string{
+var OperationNames = []string{
 	"OpRetrieveDomain",
 	"OpUpdateDomain",
 	"OpEnableDomain",
 	"OpDisableDomain",
+	"OpSendInvitation",
+	"OpAcceptInvitation",
+	"OpCreateDomain",
+	"OpFreezeDomain",
+	"OpListDomains",
+	"OpViewInvitation",
+	"OpListInvitations",
+	"OpRejectInvitation",
+	"OpDeleteInvitation",
 }
 
 func NewOperationPerm() svcutil.OperationPerm {
-	return svcutil.NewOperationPerm(expectedOperations, operationNames)
+	return svcutil.NewOperationPerm(expectedOperations, OperationNames)
 }
 
 // Below codes should moved out of service, may be can be kept in `cmd/<svc>/main.go`

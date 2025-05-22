@@ -21,6 +21,9 @@ const (
 	OpRemoveParentGroup
 	OpConnectClient
 	OpDisconnectClient
+	OpCreateChannel
+	OpListChannels
+	OpListUserChannels
 )
 
 var expectedOperations = []svcutil.Operation{
@@ -36,7 +39,7 @@ var expectedOperations = []svcutil.Operation{
 	OpDisconnectClient,
 }
 
-var operationNames = []string{
+var OperationNames = []string{
 	"OpViewChannel",
 	"OpUpdateChannel",
 	"OpUpdateChannelTags",
@@ -47,10 +50,13 @@ var operationNames = []string{
 	"OpRemoveParentGroup",
 	"OpConnectClient",
 	"OpDisconnectClient",
+	"OpCreateChannel",
+	"OpListChannels",
+	"OpListUserChannels",
 }
 
 func NewOperationPerm() svcutil.OperationPerm {
-	return svcutil.NewOperationPerm(expectedOperations, operationNames)
+	return svcutil.NewOperationPerm(expectedOperations, OperationNames)
 }
 
 // External Operations.

@@ -6,11 +6,14 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"maps"
+	"time"
 
 	"github.com/absmach/supermq/auth"
 	"github.com/absmach/supermq/groups"
 	"github.com/absmach/supermq/pkg/authn"
 	smqauthz "github.com/absmach/supermq/pkg/authz"
+	"github.com/absmach/supermq/pkg/callout"
 	"github.com/absmach/supermq/pkg/errors"
 	svcerr "github.com/absmach/supermq/pkg/errors/service"
 	"github.com/absmach/supermq/pkg/policies"
@@ -42,16 +45,24 @@ var (
 var _ groups.Service = (*authorizationMiddleware)(nil)
 
 type authorizationMiddleware struct {
-	svc    groups.Service
-	repo   groups.Repository
-	authz  smqauthz.Authorization
-	opp    svcutil.OperationPerm
-	extOpp svcutil.ExternalOperationPerm
+	svc     groups.Service
+	repo    groups.Repository
+	authz   smqauthz.Authorization
+	opp     svcutil.OperationPerm
+	extOpp  svcutil.ExternalOperationPerm
+	callout callout.Callout
 	rmMW.RoleManagerAuthorizationMiddleware
 }
 
 // AuthorizationMiddleware adds authorization to the clients service.
-func AuthorizationMiddleware(entityType string, svc groups.Service, repo groups.Repository, authz smqauthz.Authorization, groupsOpPerm, rolesOpPerm map[svcutil.Operation]svcutil.Permission, extOpPerm map[svcutil.ExternalOperation]svcutil.Permission) (groups.Service, error) {
+func AuthorizationMiddleware(entityType string,
+	svc groups.Service,
+	repo groups.Repository,
+	authz smqauthz.Authorization,
+	groupsOpPerm, rolesOpPerm map[svcutil.Operation]svcutil.Permission,
+	extOpPerm map[svcutil.ExternalOperation]svcutil.Permission,
+	callout callout.Callout,
+) (groups.Service, error) {
 	opp := groups.NewOperationPerm()
 	if err := opp.AddOperationPermissionMap(groupsOpPerm); err != nil {
 		return nil, err
@@ -72,6 +83,7 @@ func AuthorizationMiddleware(entityType string, svc groups.Service, repo groups.
 	if err != nil {
 		return nil, err
 	}
+
 	return &authorizationMiddleware{
 		svc:                                svc,
 		repo:                               repo,
@@ -79,6 +91,7 @@ func AuthorizationMiddleware(entityType string, svc groups.Service, repo groups.
 		opp:                                opp,
 		extOpp:                             extOpp,
 		RoleManagerAuthorizationMiddleware: ram,
+		callout:                            callout,
 	}, nil
 }
 
@@ -119,6 +132,13 @@ func (am *authorizationMiddleware) CreateGroup(ctx context.Context, session auth
 			return groups.Group{}, []roles.RoleProvision{}, errors.Wrap(errParentGroupSetChildGroup, err)
 		}
 	}
+	params := map[string]any{
+		"entities": []groups.Group{g},
+		"count":    1,
+	}
+	if err := am.callOut(ctx, session, groups.OpCreateGroup.String(groups.OperationNames), params); err != nil {
+		return groups.Group{}, []roles.RoleProvision{}, err
+	}
 
 	return am.svc.CreateGroup(ctx, session, g)
 }
@@ -147,6 +167,12 @@ func (am *authorizationMiddleware) UpdateGroup(ctx context.Context, session auth
 	}); err != nil {
 		return groups.Group{}, errors.Wrap(errUpdate, err)
 	}
+	params := map[string]any{
+		"entity_id": g.ID,
+	}
+	if err := am.callOut(ctx, session, groups.OpUpdateGroup.String(groups.OperationNames), params); err != nil {
+		return groups.Group{}, err
+	}
 
 	return am.svc.UpdateGroup(ctx, session, g)
 }
@@ -174,6 +200,12 @@ func (am *authorizationMiddleware) UpdateGroupTags(ctx context.Context, session 
 	}); err != nil {
 		return groups.Group{}, errors.Wrap(errUpdateTags, err)
 	}
+	params := map[string]any{
+		"entity_id": group.ID,
+	}
+	if err := am.callOut(ctx, session, groups.OpUpdateGroupTags.String(groups.OperationNames), params); err != nil {
+		return groups.Group{}, err
+	}
 	return am.svc.UpdateGroupTags(ctx, session, group)
 }
 
@@ -200,6 +232,12 @@ func (am *authorizationMiddleware) ViewGroup(ctx context.Context, session authn.
 		ObjectType:  policies.GroupType,
 	}); err != nil {
 		return groups.Group{}, errors.Wrap(errView, err)
+	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, groups.OpViewGroup.String(groups.OperationNames), params); err != nil {
+		return groups.Group{}, err
 	}
 
 	return am.svc.ViewGroup(ctx, session, id, withRoles)
@@ -234,6 +272,14 @@ func (am *authorizationMiddleware) ListGroups(ctx context.Context, session authn
 	}); err != nil {
 		return groups.Page{}, errors.Wrap(errDomainListGroups, err)
 	}
+
+	params := map[string]any{
+		"pagemeta": gm,
+	}
+	if err := am.callOut(ctx, session, groups.OpListGroups.String(groups.OperationNames), params); err != nil {
+		return groups.Page{}, err
+	}
+
 	return am.svc.ListGroups(ctx, session, gm)
 }
 
@@ -252,6 +298,13 @@ func (am *authorizationMiddleware) ListUserGroups(ctx context.Context, session a
 		ObjectType:  policies.DomainType,
 	}); err != nil {
 		return groups.Page{}, errors.Wrap(errDomainListGroups, err)
+	}
+	params := map[string]any{
+		"user_id":  userID,
+		"pagemeta": pm,
+	}
+	if err := am.callOut(ctx, session, groups.OpListUserGroups.String(groups.OperationNames), params); err != nil {
+		return groups.Page{}, err
 	}
 	return am.svc.ListUserGroups(ctx, session, userID, pm)
 }
@@ -278,6 +331,12 @@ func (am *authorizationMiddleware) EnableGroup(ctx context.Context, session auth
 		ObjectType:  policies.GroupType,
 	}); err != nil {
 		return groups.Group{}, errors.Wrap(errEnable, err)
+	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, groups.OpEnableGroup.String(groups.OperationNames), params); err != nil {
+		return groups.Group{}, err
 	}
 
 	return am.svc.EnableGroup(ctx, session, id)
@@ -306,6 +365,12 @@ func (am *authorizationMiddleware) DisableGroup(ctx context.Context, session aut
 	}); err != nil {
 		return groups.Group{}, errors.Wrap(errDisable, err)
 	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, groups.OpDisableGroup.String(groups.OperationNames), params); err != nil {
+		return groups.Group{}, err
+	}
 
 	return am.svc.DisableGroup(ctx, session, id)
 }
@@ -323,7 +388,6 @@ func (am *authorizationMiddleware) DeleteGroup(ctx context.Context, session auth
 			return errors.Wrap(svcerr.ErrUnauthorizedPAT, err)
 		}
 	}
-
 	if err := am.authorize(ctx, groups.OpDeleteGroup, smqauthz.PolicyReq{
 		Domain:      session.DomainID,
 		SubjectType: policies.UserType,
@@ -332,6 +396,12 @@ func (am *authorizationMiddleware) DeleteGroup(ctx context.Context, session auth
 		ObjectType:  policies.GroupType,
 	}); err != nil {
 		return errors.Wrap(errDelete, err)
+	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, groups.OpDeleteGroup.String(groups.OperationNames), params); err != nil {
+		return err
 	}
 
 	return am.svc.DeleteGroup(ctx, session, id)
@@ -359,6 +429,13 @@ func (am *authorizationMiddleware) RetrieveGroupHierarchy(ctx context.Context, s
 		ObjectType:  policies.GroupType,
 	}); err != nil {
 		return groups.HierarchyPage{}, errors.Wrap(errViewHierarchy, err)
+	}
+	params := map[string]any{
+		"entity_id":          id,
+		"hierarchy_pagemeta": hm,
+	}
+	if err := am.callOut(ctx, session, groups.OpRetrieveGroupHierarchy.String(groups.OperationNames), params); err != nil {
+		return groups.HierarchyPage{}, err
 	}
 	return am.svc.RetrieveGroupHierarchy(ctx, session, id, hm)
 }
@@ -395,6 +472,13 @@ func (am *authorizationMiddleware) AddParentGroup(ctx context.Context, session a
 		ObjectType:  policies.GroupType,
 	}); err != nil {
 		return errors.Wrap(errParentGroupSetChildGroup, err)
+	}
+	params := map[string]any{
+		"entity_id": id,
+		"parent_id": parentID,
+	}
+	if err := am.callOut(ctx, session, groups.OpAddParentGroup.String(groups.OperationNames), params); err != nil {
+		return err
 	}
 	return am.svc.AddParentGroup(ctx, session, id, parentID)
 }
@@ -439,6 +523,13 @@ func (am *authorizationMiddleware) RemoveParentGroup(ctx context.Context, sessio
 			return errors.Wrap(errParentGroupRemoveChildGroup, err)
 		}
 	}
+	params := map[string]any{
+		"entity_id": id,
+		"parent_id": group.Parent,
+	}
+	if err := am.callOut(ctx, session, groups.OpRemoveParentGroup.String(groups.OperationNames), params); err != nil {
+		return err
+	}
 	return am.svc.RemoveParentGroup(ctx, session, id)
 }
 
@@ -477,6 +568,13 @@ func (am *authorizationMiddleware) AddChildrenGroups(ctx context.Context, sessio
 			return errors.Wrap(errChildGroupSetParentGroup, errors.Wrap(fmt.Errorf("child group id: %s", childID), err))
 		}
 	}
+	params := map[string]any{
+		"entity_id":          id,
+		"children_group_ids": childrenGroupIDs,
+	}
+	if err := am.callOut(ctx, session, groups.OpAddChildrenGroups.String(groups.OperationNames), params); err != nil {
+		return err
+	}
 
 	return am.svc.AddChildrenGroups(ctx, session, id, childrenGroupIDs)
 }
@@ -503,6 +601,13 @@ func (am *authorizationMiddleware) RemoveChildrenGroups(ctx context.Context, ses
 		ObjectType:  policies.GroupType,
 	}); err != nil {
 		return errors.Wrap(errRemoveChildrenGroups, err)
+	}
+	params := map[string]any{
+		"entity_id":          id,
+		"children_group_ids": childrenGroupIDs,
+	}
+	if err := am.callOut(ctx, session, groups.OpRemoveChildrenGroups.String(groups.OperationNames), params); err != nil {
+		return err
 	}
 
 	return am.svc.RemoveChildrenGroups(ctx, session, id, childrenGroupIDs)
@@ -531,6 +636,12 @@ func (am *authorizationMiddleware) RemoveAllChildrenGroups(ctx context.Context, 
 	}); err != nil {
 		return err
 	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, groups.OpRemoveAllChildrenGroups.String(groups.OperationNames), params); err != nil {
+		return err
+	}
 
 	return am.svc.RemoveAllChildrenGroups(ctx, session, id)
 }
@@ -557,6 +668,15 @@ func (am *authorizationMiddleware) ListChildrenGroups(ctx context.Context, sessi
 		ObjectType:  policies.GroupType,
 	}); err != nil {
 		return groups.Page{}, errors.Wrap(errListChildrenGroups, err)
+	}
+	params := map[string]any{
+		"entity_id":   id,
+		"start_level": startLevel,
+		"end_level":   endLevel,
+		"pagemeta":    pm,
+	}
+	if err := am.callOut(ctx, session, groups.OpListChildrenGroups.String(groups.OperationNames), params); err != nil {
+		return groups.Page{}, err
 	}
 
 	return am.svc.ListChildrenGroups(ctx, session, id, startLevel, endLevel, pm)
@@ -597,6 +717,24 @@ func (am *authorizationMiddleware) extAuthorize(ctx context.Context, extOp svcut
 	req.Permission = perm.String()
 
 	if err := am.authz.Authorize(ctx, req); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (am *authorizationMiddleware) callOut(ctx context.Context, session authn.Session, op string, params map[string]interface{}) error {
+	pl := map[string]any{
+		"entity_type":  policies.GroupType,
+		"subject_type": policies.UserType,
+		"subject_id":   session.UserID,
+		"domain":       session.DomainID,
+		"time":         time.Now().UTC(),
+	}
+
+	maps.Copy(params, pl)
+
+	if err := am.callout.Callout(ctx, op, params); err != nil {
 		return err
 	}
 

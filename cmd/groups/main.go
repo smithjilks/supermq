@@ -31,6 +31,7 @@ import (
 	authsvcAuthn "github.com/absmach/supermq/pkg/authn/authsvc"
 	smqauthz "github.com/absmach/supermq/pkg/authz"
 	authsvcAuthz "github.com/absmach/supermq/pkg/authz/authsvc"
+	"github.com/absmach/supermq/pkg/callout"
 	dconsumer "github.com/absmach/supermq/pkg/domains/events/consumer"
 	domainsAuthz "github.com/absmach/supermq/pkg/domains/grpcclient"
 	"github.com/absmach/supermq/pkg/grpcclient"
@@ -60,17 +61,18 @@ import (
 )
 
 const (
-	svcName           = "groups"
-	envPrefixDB       = "SMQ_GROUPS_DB_"
-	envPrefixHTTP     = "SMQ_GROUPS_HTTP_"
-	envPrefixgRPC     = "SMQ_GROUPS_GRPC_"
-	envPrefixAuth     = "SMQ_AUTH_GRPC_"
-	envPrefixDomains  = "SMQ_DOMAINS_GRPC_"
-	envPrefixChannels = "SMQ_CHANNELS_GRPC_"
-	envPrefixClients  = "SMQ_CLIENTS_GRPC_"
-	defDB             = "groups"
-	defSvcHTTPPort    = "9004"
-	defSvcgRPCPort    = "7004"
+	svcName               = "groups"
+	envPrefixDB           = "SMQ_GROUPS_DB_"
+	envPrefixHTTP         = "SMQ_GROUPS_HTTP_"
+	envPrefixgRPC         = "SMQ_GROUPS_GRPC_"
+	envPrefixAuth         = "SMQ_AUTH_GRPC_"
+	envPrefixDomains      = "SMQ_DOMAINS_GRPC_"
+	envPrefixChannels     = "SMQ_CHANNELS_GRPC_"
+	envPrefixClients      = "SMQ_CLIENTS_GRPC_"
+	envPrefixGroupCallout = "SMQ_GROUPS_CALLOUT_"
+	defDB                 = "groups"
+	defSvcHTTPPort        = "9004"
+	defSvcgRPCPort        = "7004"
 )
 
 type config struct {
@@ -175,6 +177,13 @@ func main() {
 	}
 	defer domainsHandler.Close()
 
+	callCfg := callout.Config{}
+	if err := env.ParseWithOptions(&callCfg, env.Options{Prefix: envPrefixGroupCallout}); err != nil {
+		logger.Error(fmt.Sprintf("failed to parse callout config : %s", err))
+		exitCode = 1
+		return
+	}
+
 	authz, authzHandler, err := authsvcAuthz.NewAuthorization(ctx, authClientConfig, domAuthz)
 	if err != nil {
 		logger.Error("failed to create authz " + err.Error())
@@ -222,7 +231,14 @@ func main() {
 	defer clientsHandler.Close()
 	logger.Info("Clients gRPC client successfully connected to clients gRPC server " + clientsHandler.Secure())
 
-	svc, psvc, err := newService(ctx, authz, policyService, db, dbConfig, channelsClient, clientsClient, tracer, logger, cfg)
+	callout, err := callout.New(callCfg)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create new callout: %s", err))
+		exitCode = 1
+		return
+	}
+
+	svc, psvc, err := newService(ctx, authz, policyService, db, dbConfig, channelsClient, clientsClient, tracer, logger, cfg, callout)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to setup service: %s", err))
 		exitCode = 1
@@ -284,7 +300,10 @@ func main() {
 	}
 }
 
-func newService(ctx context.Context, authz smqauthz.Authorization, policy policies.Service, db *sqlx.DB, dbConfig pgclient.Config, channels grpcChannelsV1.ChannelsServiceClient, clients grpcClientsV1.ClientsServiceClient, tracer trace.Tracer, logger *slog.Logger, c config) (groups.Service, pgroups.Service, error) {
+func newService(ctx context.Context, authz smqauthz.Authorization, policy policies.Service, db *sqlx.DB,
+	dbConfig pgclient.Config, channels grpcChannelsV1.ChannelsServiceClient,
+	clients grpcClientsV1.ClientsServiceClient, tracer trace.Tracer, logger *slog.Logger, c config, callout callout.Callout,
+) (groups.Service, pgroups.Service, error) {
 	database := pg.NewDatabase(db, dbConfig, tracer)
 	idp := uuid.New()
 	sid, err := sid.New()
@@ -308,7 +327,8 @@ func newService(ctx context.Context, authz smqauthz.Authorization, policy polici
 		return nil, nil, err
 	}
 
-	svc, err = middleware.AuthorizationMiddleware(policies.GroupType, svc, repo, authz, groups.NewOperationPermissionMap(), groups.NewRolesOperationPermissionMap(), groups.NewExternalOperationPermissionMap())
+	svc, err = middleware.AuthorizationMiddleware(policies.GroupType, svc, repo, authz, groups.NewOperationPermissionMap(), groups.NewRolesOperationPermissionMap(),
+		groups.NewExternalOperationPermissionMap(), callout)
 	if err != nil {
 		return nil, nil, err
 	}

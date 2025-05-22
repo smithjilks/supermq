@@ -6,11 +6,14 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"maps"
+	"time"
 
 	"github.com/absmach/supermq/auth"
 	"github.com/absmach/supermq/channels"
 	"github.com/absmach/supermq/pkg/authn"
 	smqauthz "github.com/absmach/supermq/pkg/authz"
+	"github.com/absmach/supermq/pkg/callout"
 	"github.com/absmach/supermq/pkg/connections"
 	"github.com/absmach/supermq/pkg/errors"
 	svcerr "github.com/absmach/supermq/pkg/errors/service"
@@ -42,16 +45,24 @@ var (
 var _ channels.Service = (*authorizationMiddleware)(nil)
 
 type authorizationMiddleware struct {
-	svc    channels.Service
-	repo   channels.Repository
-	authz  smqauthz.Authorization
-	opp    svcutil.OperationPerm
-	extOpp svcutil.ExternalOperationPerm
+	svc     channels.Service
+	repo    channels.Repository
+	authz   smqauthz.Authorization
+	opp     svcutil.OperationPerm
+	extOpp  svcutil.ExternalOperationPerm
+	callout callout.Callout
 	rmMW.RoleManagerAuthorizationMiddleware
 }
 
 // AuthorizationMiddleware adds authorization to the channels service.
-func AuthorizationMiddleware(svc channels.Service, repo channels.Repository, authz smqauthz.Authorization, channelsOpPerm, rolesOpPerm map[svcutil.Operation]svcutil.Permission, extOpPerm map[svcutil.ExternalOperation]svcutil.Permission) (channels.Service, error) {
+func AuthorizationMiddleware(
+	svc channels.Service,
+	repo channels.Repository,
+	authz smqauthz.Authorization,
+	channelsOpPerm, rolesOpPerm map[svcutil.Operation]svcutil.Permission,
+	extOpPerm map[svcutil.ExternalOperation]svcutil.Permission,
+	callout callout.Callout,
+) (channels.Service, error) {
 	opp := channels.NewOperationPerm()
 	if err := opp.AddOperationPermissionMap(channelsOpPerm); err != nil {
 		return nil, err
@@ -79,6 +90,7 @@ func AuthorizationMiddleware(svc channels.Service, repo channels.Repository, aut
 		RoleManagerAuthorizationMiddleware: ram,
 		opp:                                opp,
 		extOpp:                             extOpp,
+		callout:                            callout,
 	}, nil
 }
 
@@ -95,7 +107,6 @@ func (am *authorizationMiddleware) CreateChannels(ctx context.Context, session a
 			return []channels.Channel{}, []roles.RoleProvision{}, errors.Wrap(svcerr.ErrUnauthorizedPAT, err)
 		}
 	}
-
 	if err := am.extAuthorize(ctx, channels.DomainOpCreateChannel, smqauthz.PolicyReq{
 		Domain:      session.DomainID,
 		SubjectType: policies.UserType,
@@ -119,6 +130,14 @@ func (am *authorizationMiddleware) CreateChannels(ctx context.Context, session a
 			}
 		}
 	}
+	params := map[string]any{
+		"entities": chs,
+		"count":    len(chs),
+	}
+	if err := am.callOut(ctx, session, channels.OpCreateChannel.String(channels.OperationNames), params); err != nil {
+		return []channels.Channel{}, []roles.RoleProvision{}, err
+	}
+
 	return am.svc.CreateChannels(ctx, session, chs...)
 }
 
@@ -145,6 +164,12 @@ func (am *authorizationMiddleware) ViewChannel(ctx context.Context, session auth
 	}); err != nil {
 		return channels.Channel{}, errors.Wrap(err, errView)
 	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, channels.OpViewChannel.String(channels.OperationNames), params); err != nil {
+		return channels.Channel{}, err
+	}
 	return am.svc.ViewChannel(ctx, session, id, withRoles)
 }
 
@@ -165,6 +190,12 @@ func (am *authorizationMiddleware) ListChannels(ctx context.Context, session aut
 	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
 		session.SuperAdmin = true
 	}
+	params := map[string]any{
+		"pagemeta": pm,
+	}
+	if err := am.callOut(ctx, session, channels.OpListChannels.String(channels.OperationNames), params); err != nil {
+		return channels.ChannelsPage{}, err
+	}
 	return am.svc.ListChannels(ctx, session, pm)
 }
 
@@ -183,6 +214,13 @@ func (am *authorizationMiddleware) ListUserChannels(ctx context.Context, session
 	}
 	if err := am.checkSuperAdmin(ctx, session.UserID); err != nil {
 		return channels.ChannelsPage{}, errors.Wrap(err, errList)
+	}
+	params := map[string]any{
+		"user_id":  userID,
+		"pagemeta": pm,
+	}
+	if err := am.callOut(ctx, session, channels.OpListUserChannels.String(channels.OperationNames), params); err != nil {
+		return channels.ChannelsPage{}, err
 	}
 	return am.svc.ListUserChannels(ctx, session, userID, pm)
 }
@@ -210,6 +248,12 @@ func (am *authorizationMiddleware) UpdateChannel(ctx context.Context, session au
 	}); err != nil {
 		return channels.Channel{}, errors.Wrap(err, errUpdate)
 	}
+	params := map[string]any{
+		"entity_id": channel.ID,
+	}
+	if err := am.callOut(ctx, session, channels.OpUpdateChannel.String(channels.OperationNames), params); err != nil {
+		return channels.Channel{}, err
+	}
 	return am.svc.UpdateChannel(ctx, session, channel)
 }
 
@@ -235,6 +279,12 @@ func (am *authorizationMiddleware) UpdateChannelTags(ctx context.Context, sessio
 		Object:      channel.ID,
 	}); err != nil {
 		return channels.Channel{}, errors.Wrap(err, errUpdateTags)
+	}
+	params := map[string]any{
+		"entity_id": channel.ID,
+	}
+	if err := am.callOut(ctx, session, channels.OpUpdateChannelTags.String(channels.OperationNames), params); err != nil {
+		return channels.Channel{}, err
 	}
 	return am.svc.UpdateChannelTags(ctx, session, channel)
 }
@@ -262,6 +312,12 @@ func (am *authorizationMiddleware) EnableChannel(ctx context.Context, session au
 	}); err != nil {
 		return channels.Channel{}, errors.Wrap(err, errEnable)
 	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, channels.OpEnableChannel.String(channels.OperationNames), params); err != nil {
+		return channels.Channel{}, err
+	}
 	return am.svc.EnableChannel(ctx, session, id)
 }
 
@@ -288,6 +344,12 @@ func (am *authorizationMiddleware) DisableChannel(ctx context.Context, session a
 	}); err != nil {
 		return channels.Channel{}, errors.Wrap(err, errDisable)
 	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, channels.OpDisableChannel.String(channels.OperationNames), params); err != nil {
+		return channels.Channel{}, err
+	}
 	return am.svc.DisableChannel(ctx, session, id)
 }
 
@@ -304,7 +366,6 @@ func (am *authorizationMiddleware) RemoveChannel(ctx context.Context, session au
 			return errors.Wrap(svcerr.ErrUnauthorizedPAT, err)
 		}
 	}
-
 	if err := am.authorize(ctx, channels.OpDeleteChannel, smqauthz.PolicyReq{
 		Domain:      session.DomainID,
 		SubjectType: policies.UserType,
@@ -314,6 +375,13 @@ func (am *authorizationMiddleware) RemoveChannel(ctx context.Context, session au
 	}); err != nil {
 		return errors.Wrap(err, errDelete)
 	}
+	params := map[string]any{
+		"entity_id": id,
+	}
+	if err := am.callOut(ctx, session, channels.OpDeleteChannel.String(channels.OperationNames), params); err != nil {
+		return err
+	}
+
 	return am.svc.RemoveChannel(ctx, session, id)
 }
 
@@ -366,6 +434,14 @@ func (am *authorizationMiddleware) Connect(ctx context.Context, session authn.Se
 		}); err != nil {
 			return errors.Wrap(err, errClientConnectChannels)
 		}
+	}
+	params := map[string]any{
+		"channel_ids":      chIDs,
+		"client_ids":       thIDs,
+		"connection_types": connTypes,
+	}
+	if err := am.callOut(ctx, session, channels.OpConnectClient.String(channels.OperationNames), params); err != nil {
+		return err
 	}
 	return am.svc.Connect(ctx, session, chIDs, thIDs, connTypes)
 }
@@ -421,6 +497,14 @@ func (am *authorizationMiddleware) Disconnect(ctx context.Context, session authn
 			return errors.Wrap(err, errClientDisConnectChannels)
 		}
 	}
+	params := map[string]any{
+		"channel_ids":      chIDs,
+		"client_ids":       thIDs,
+		"connection_types": connTypes,
+	}
+	if err := am.callOut(ctx, session, channels.OpDisconnectClient.String(channels.OperationNames), params); err != nil {
+		return err
+	}
 	return am.svc.Disconnect(ctx, session, chIDs, thIDs, connTypes)
 }
 
@@ -456,6 +540,13 @@ func (am *authorizationMiddleware) SetParentGroup(ctx context.Context, session a
 		Object:      parentGroupID,
 	}); err != nil {
 		return errors.Wrap(err, errGroupSetChildChannels)
+	}
+	params := map[string]any{
+		"entity_id":       id,
+		"parent_group_id": parentGroupID,
+	}
+	if err := am.callOut(ctx, session, channels.OpSetParentGroup.String(channels.OperationNames), params); err != nil {
+		return err
 	}
 	return am.svc.SetParentGroup(ctx, session, parentGroupID, id)
 }
@@ -497,6 +588,13 @@ func (am *authorizationMiddleware) RemoveParentGroup(ctx context.Context, sessio
 			Object:      ch.ParentGroup,
 		}); err != nil {
 			return errors.Wrap(err, errGroupRemoveChildChannels)
+		}
+		params := map[string]any{
+			"entity_id":       id,
+			"parent_group_id": ch.ParentGroup,
+		}
+		if err := am.callOut(ctx, session, channels.OpRemoveParentGroup.String(channels.OperationNames), params); err != nil {
+			return err
 		}
 		return am.svc.RemoveParentGroup(ctx, session, id)
 	}
@@ -543,5 +641,23 @@ func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, userID s
 	}); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (am *authorizationMiddleware) callOut(ctx context.Context, session authn.Session, op string, params map[string]interface{}) error {
+	pl := map[string]any{
+		"entity_type":  policies.ChannelType,
+		"subject_type": policies.UserType,
+		"subject_id":   session.UserID,
+		"domain":       session.DomainID,
+		"time":         time.Now().UTC(),
+	}
+
+	maps.Copy(params, pl)
+
+	if err := am.callout.Callout(ctx, op, params); err != nil {
+		return err
+	}
+
 	return nil
 }

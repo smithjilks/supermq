@@ -31,6 +31,7 @@ import (
 	authsvcAuthn "github.com/absmach/supermq/pkg/authn/authsvc"
 	smqauthz "github.com/absmach/supermq/pkg/authz"
 	authsvcAuthz "github.com/absmach/supermq/pkg/authz/authsvc"
+	"github.com/absmach/supermq/pkg/callout"
 	pkgDomains "github.com/absmach/supermq/pkg/domains"
 	dconsumer "github.com/absmach/supermq/pkg/domains/events/consumer"
 	domainsAuthz "github.com/absmach/supermq/pkg/domains/grpcclient"
@@ -62,17 +63,18 @@ import (
 )
 
 const (
-	svcName          = "channels"
-	envPrefixDB      = "SMQ_CHANNELS_DB_"
-	envPrefixHTTP    = "SMQ_CHANNELS_HTTP_"
-	envPrefixGRPC    = "SMQ_CHANNELS_GRPC_"
-	envPrefixAuth    = "SMQ_AUTH_GRPC_"
-	envPrefixClients = "SMQ_CLIENTS_GRPC_"
-	envPrefixGroups  = "SMQ_GROUPS_GRPC_"
-	envPrefixDomains = "SMQ_DOMAINS_GRPC_"
-	defDB            = "channels"
-	defSvcHTTPPort   = "9005"
-	defSvcGRPCPort   = "7005"
+	svcName                 = "channels"
+	envPrefixDB             = "SMQ_CHANNELS_DB_"
+	envPrefixHTTP           = "SMQ_CHANNELS_HTTP_"
+	envPrefixGRPC           = "SMQ_CHANNELS_GRPC_"
+	envPrefixAuth           = "SMQ_AUTH_GRPC_"
+	envPrefixClients        = "SMQ_CLIENTS_GRPC_"
+	envPrefixGroups         = "SMQ_GROUPS_GRPC_"
+	envPrefixDomains        = "SMQ_DOMAINS_GRPC_"
+	envPrefixChannelCallout = "SMQ_CHANNELS_CALLOUT_"
+	defDB                   = "channels"
+	defSvcHTTPPort          = "9005"
+	defSvcGRPCPort          = "7005"
 )
 
 type config struct {
@@ -187,6 +189,13 @@ func main() {
 	}
 	defer domainsHandler.Close()
 
+	callCfg := callout.Config{}
+	if err := env.ParseWithOptions(&callCfg, env.Options{Prefix: envPrefixChannelCallout}); err != nil {
+		logger.Error(fmt.Sprintf("failed to parse callout config : %s", err))
+		exitCode = 1
+		return
+	}
+
 	authz, authzClient, err := authsvcAuthz.NewAuthorization(ctx, grpcCfg, domAuthz)
 	if err != nil {
 		logger.Error(err.Error())
@@ -226,7 +235,16 @@ func main() {
 	defer groupsHandler.Close()
 	logger.Info("Groups gRPC client successfully connected to groups gRPC server " + groupsHandler.Secure())
 
-	svc, psvc, err := newService(ctx, db, dbConfig, authz, policyEvaluator, policyService, cfg, tracer, clientsClient, groupsClient, domAuthz, logger)
+	callout, err := callout.New(callCfg)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create new callout: %s", err))
+		exitCode = 1
+		return
+	}
+
+	svc, psvc, err := newService(ctx, db, dbConfig, authz, policyEvaluator, policyService,
+		cfg, tracer, clientsClient, groupsClient, domAuthz, logger,
+		callout)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to create services: %s", err))
 		exitCode = 1
@@ -299,7 +317,7 @@ func main() {
 
 func newService(ctx context.Context, db *sqlx.DB, dbConfig pgclient.Config, authz smqauthz.Authorization,
 	pe policies.Evaluator, ps policies.Service, cfg config, tracer trace.Tracer, clientsClient grpcClientsV1.ClientsServiceClient,
-	groupsClient grpcGroupsV1.GroupsServiceClient, da pkgDomains.Authorization, logger *slog.Logger,
+	groupsClient grpcGroupsV1.GroupsServiceClient, da pkgDomains.Authorization, logger *slog.Logger, callout callout.Callout,
 ) (channels.Service, pChannels.Service, error) {
 	database := pg.NewDatabase(db, dbConfig, tracer)
 	repo := postgres.NewRepository(database)
@@ -330,7 +348,7 @@ func newService(ctx context.Context, db *sqlx.DB, dbConfig pgclient.Config, auth
 	counter, latency := prometheus.MakeMetrics("channels", "api")
 	svc = middleware.MetricsMiddleware(svc, counter, latency)
 
-	svc, err = middleware.AuthorizationMiddleware(svc, repo, authz, channels.NewOperationPermissionMap(), channels.NewRolesOperationPermissionMap(), channels.NewExternalOperationPermissionMap())
+	svc, err = middleware.AuthorizationMiddleware(svc, repo, authz, channels.NewOperationPermissionMap(), channels.NewRolesOperationPermissionMap(), channels.NewExternalOperationPermissionMap(), callout)
 	if err != nil {
 		return nil, nil, err
 	}
