@@ -351,15 +351,40 @@ func (svc *service) RemoveEntityMembers(ctx context.Context, session authn.Sessi
 	return svc.ProvisionManageService.RemoveEntityMembers(ctx, session, entityID, members)
 }
 
-func (svc *service) RoleRemoveMembers(ctx context.Context, session authn.Session, entityID, roleID string, members []string) (err error) {
-	for _, member := range members {
-		if err := svc.repo.DeleteInvitation(ctx, member, entityID); err != nil && err != repoerr.ErrNotFound {
+func (svc *service) RoleRemoveMembers(ctx context.Context, session authn.Session, entityID, roleID string, members []string) error {
+	ro, err := svc.repo.RetrieveEntityRole(ctx, entityID, roleID)
+	if err != nil {
+		return errors.Wrap(svcerr.ErrViewEntity, err)
+	}
+
+	if _, err := svc.ProvisionManageService.BuiltInRoleActions(roles.BuiltInRoleName(ro.Name)); err == nil {
+		membersPage, err := svc.repo.RoleListMembers(ctx, ro.ID, 0, 0)
+		if err != nil {
+			return errors.Wrap(svcerr.ErrViewEntity, err)
+		}
+		if membersPage.Total <= uint64(len(members)) {
+			return svcerr.ErrRetainOneMember
+		}
+	}
+
+	for _, memberID := range members {
+		if err := svc.repo.DeleteInvitation(ctx, memberID, entityID); err != nil && err != repoerr.ErrNotFound {
 			return err
 		}
 	}
+
 	return svc.ProvisionManageService.RoleRemoveMembers(ctx, session, entityID, roleID, members)
 }
 
-func (svc *service) RoleRemoveAllMembers(ctx context.Context, session authn.Session, entityID, roleID string) (err error) {
-	return svcerr.ErrNotFound
+func (svc *service) RoleRemoveAllMembers(ctx context.Context, session authn.Session, entityID, roleID string) error {
+	ro, err := svc.repo.RetrieveEntityRole(ctx, entityID, roleID)
+	if err != nil {
+		return errors.Wrap(svcerr.ErrViewEntity, err)
+	}
+
+	if _, err := svc.ProvisionManageService.BuiltInRoleActions(roles.BuiltInRoleName(ro.Name)); err == nil {
+		return svcerr.ErrRetainOneMember
+	}
+
+	return svc.ProvisionManageService.RoleRemoveAllMembers(ctx, session, entityID, roleID)
 }
