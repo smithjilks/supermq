@@ -54,13 +54,7 @@ type SubscriberConfig struct {
 	Topic          string         // Topic to subscribe to.
 	Handler        MessageHandler // Function that handles incoming messages.
 	DeliveryPolicy DeliveryPolicy // DeliverPolicy defines from which point to start delivering messages.
-	MaxDelivery    int            // Maximum number of delivery attempts before giving up.
 	Ordered        bool           // Whether message delivery must preserve order.
-
-	// HandlerAck is the acknowledgment action to perform after the handler returns a nil error.
-	HandlerAck AckType
-	// HandlerErr is the acknowledgment action to perform after the handler returns a non-nil error.
-	HandlerErr AckType
 }
 
 // Subscriber specifies message subscription API.
