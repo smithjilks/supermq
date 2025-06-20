@@ -43,6 +43,7 @@ paths:
         be uniquely identified by its email address.
       requestBody:
         $ref: "#/components/requestBodies/UserCreateReq"
+      security: []
       responses:
         "201":
           $ref: "#/components/responses/UserCreateRes"
@@ -80,7 +81,7 @@ paths:
         - $ref: "#/components/parameters/LastName"
         - $ref: "#/components/parameters/Username"
         - $ref: "#/components/parameters/Email"
-        - $ref: "#/components/parameters/Tags"
+        - $ref: "#/components/parameters/Tag"
       security:
         - bearerAuth: []
       responses:
@@ -139,6 +140,8 @@ paths:
           description: Failed due to malformed query parameters.
         "401":
           description: Missing or invalid access token provided.
+        "403":
+          description: Failed to perform authorization over the entity."
         "404":
           description: A non-existent entity request.
         "422":
@@ -197,6 +200,8 @@ paths:
           description: Failed due to malformed query parameters.
         "401":
           description: Missing or invalid access token provided.
+        "403":
+          description: Failed to perform authorization over the entity."
         "404":
           description: A non-existent entity request.
         "405":
@@ -630,7 +635,7 @@ components:
           description: User's last name.
         email:
           type: string
-          example: "admin@example.com"
+          example: "user@example.com"
           description: User's email address will be used as its unique identifier.
         tags:
           type: array
@@ -644,14 +649,17 @@ components:
           properties:
             username:
               type: string
-              example: "admin"
-              description: User's username for example 'admin' will be used as its unique identifier.
+              example: "userName"
+              description: User's username for example 'userName' will be used as its unique identifier.
             secret:
               type: string
               format: password
               example: password
               minimum: 8
               description: Free-form account secret used for acquiring auth token(s).
+          required:
+            - username
+            - secret
         metadata:
           type: object
           example: { "domain": "example.com" }
@@ -665,8 +673,14 @@ components:
           description: User Status
           format: string
           example: enabled
+          enum:
+            - enabled
+            - disabled
       required:
         - credentials
+        - first_name
+        - last_name
+        - email
 
     User:
       type: object
@@ -1009,6 +1023,7 @@ components:
       in: header
       schema:
         type: string
+      example: "example.com"
       required: true
 
     UserID:
@@ -1071,18 +1086,14 @@ components:
       required: false
       example: enabled
 
-    Tags:
-      name: tags
-      description: User tags.
+    Tag:
+      name: tag
+      description: User tag.
       in: query
       schema:
-        type: array
-        minItems: 0
-        uniqueItems: true
-        items:
-          type: string
+        type: string
       required: false
-      example: ["yello", "orange"]
+      example: "orange"
 
     GroupName:
       name: name
@@ -1197,8 +1208,12 @@ components:
       description: Metadata filter. Filtering is performed matching the parameter with metadata on top level. Parameter is json.
       in: query
       schema:
-        type: string
-        minimum: 0
+        type: object
+        properties:
+          key:
+            type: string
+            description: Metadata key to filter by.
+      example: { "key": "value" }
       required: false
 
     Limit:
@@ -1324,11 +1339,8 @@ components:
               email:
                 type: string
                 format: email
+                example: user@example.com
                 description: User email.
-              host:
-                type: string
-                example: examplehost
-                description: Email host.
 
     PasswordReset:
       description: Password reset request data, new password and token that is appended on password reset link received in email.
@@ -1341,13 +1353,13 @@ components:
                 type: string
                 format: password
                 description: New password.
-                example: 12345678
+                example: "12345678"
                 minimum: 8
               confirm_password:
                 type: string
                 format: password
                 description: New confirmation password.
-                example: 12345678
+                example: "12345678"
                 minimum: 8
               token:
                 type: string
@@ -1391,14 +1403,6 @@ components:
           operationId: getUser
           parameters:
             userID: $response.body#/id
-        get_groups:
-          operationId: listUsersInGroup
-          parameters:
-            groupID: $response.body#/id
-        get_channels:
-          operationId: listUsersInChannel
-          parameters:
-            channelID: $response.body#/id
         update:
           operationId: updateUser
           parameters:
@@ -1438,15 +1442,6 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/User"
-      links:
-        get_groups:
-          operationId: listUsersInGroup
-          parameters:
-            groupID: $response.body#/id
-        get_channels:
-          operationId: listUsersInChannel
-          parameters:
-            channelID: $response.body#/id
 
     UserPageRes:
       description: Data retrieved.

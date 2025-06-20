@@ -365,6 +365,8 @@ paths:
           description: PAT not found.
         "415":
           description: Missing or invalid content type.
+        "422":
+          description: Database cannot process the request.
         "500":
           $ref: "#/components/responses/ServiceError"
   

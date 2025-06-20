@@ -136,6 +136,7 @@ components:
       in: path
       schema:
         type: string
+      example: mydomain
       required: true
     channelPrefix:
       name: channelPrefix
@@ -143,6 +144,7 @@ components:
       in: path
       schema:
         type: string
+      example: mychannel
       required: true
 
   requestBodies:

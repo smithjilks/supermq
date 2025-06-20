@@ -148,21 +148,21 @@ define test_api_service
 	fi
 
 	@if [ "$(svc)" = "http" ]; then \
-		st run api/openapi/$(svc).yaml \
+		st run apidocs/openapi/$(svc).yaml \
 		--checks all \
-		--base-url $(2) \
+		--url $(2) \
 		--header "Authorization: Client $(CLIENT_SECRET)" \
-		--contrib-openapi-formats-uuid \
-		--hypothesis-suppress-health-check=filter_too_much \
-		--stateful=links; \
+		--suppress-health-check=filter_too_much \
+		--exclude-checks=positive_data_acceptance \
+		--phases=examples,stateful; \
 	else \
-		st run api/openapi/$(svc).yaml \
+		st run apidocs/openapi/$(svc).yaml \
 		--checks all \
-		--base-url $(2) \
+		--url $(2) \
 		--header "Authorization: Bearer $(USER_TOKEN)" \
-		--contrib-openapi-formats-uuid \
-		--hypothesis-suppress-health-check=filter_too_much \
-		--stateful=links; \
+		--suppress-health-check=filter_too_much \
+		--exclude-checks=positive_data_acceptance \
+		--phases=examples,stateful; \
 	fi
 endef
 

@@ -1590,21 +1590,9 @@ components:
           parameters:
             groupID: $response.body#/id
         get_children:
-          operationId: listChildren
+          operationId: listChildrenGroups
           parameters:
             groupID: $response.body#/id
-        get_parent:
-          operationId: listParents
-          parameters:
-            groupID: $response.body#/id
-        get_channels:
-          operationId: listGroupsInChannel
-          parameters:
-            memberID: $response.body#/id
-        get_users:
-          operationId: listGroupsByUser
-          parameters:
-            memberID: $response.body#/id
         update:
           operationId: updateGroup
           parameters:
@@ -1617,14 +1605,6 @@ components:
           operationId: enableGroup
           parameters:
             groupID: $response.body#/id
-        assign:
-          operationId: assignUser
-          parameters:
-            groupID: $response.body#/id
-        unassign:
-          operationId: unassignUser
-          parameters:
-            groupID: $response.body#/id
 
     GroupRes:
       description: Data retrieved.
@@ -1634,27 +1614,19 @@ components:
             $ref: "#/components/schemas/Group"
       links:
         get_children:
-          operationId: listChildren
+          operationId: listChildrenGroups
           parameters:
             groupID: $response.body#/id
-        get_parent:
-          operationId: listParents
+        update:
+          operationId: updateGroup
           parameters:
             groupID: $response.body#/id
-        get_channels:
-          operationId: listGroupsInChannel
-          parameters:
-            memberID: $response.body#/id
-        get_users:
-          operationId: listGroupsByUser
-          parameters:
-            memberID: $response.body#/id
-        assign:
-          operationId: assignUser
+        disable:
+          operationId: disableGroup
           parameters:
             groupID: $response.body#/id
-        unassign:
-          operationId: unassignUser
+        enable:
+          operationId: enableGroup
           parameters:
             groupID: $response.body#/id
 

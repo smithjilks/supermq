@@ -931,18 +931,6 @@ components:
           operationId: getChannel
           parameters:
             chanID: $response.body#/id
-        get_clients:
-          operationId: listClientsInaChannel
-          parameters:
-            chanID: $response.body#/id
-        get_users:
-          operationId: listChannelsConnectedToUser
-          parameters:
-            memberID: $response.body#/id
-        get_groups:
-          operationId: listChannelsConnectedToGroup
-          parameters:
-            memberID: $response.body#/id
         update:
           operationId: updateChannel
           parameters:
@@ -953,22 +941,6 @@ components:
             chanID: $response.body#/id
         enable:
           operationId: enableChannel
-          parameters:
-            chanID: $response.body#/id
-        assign_users:
-          operationId: assignUsersToChannel
-          parameters:
-            chanID: $response.body#/id
-        unassign_users:
-          operationId: unassignUsersFromChannel
-          parameters:
-            chanID: $response.body#/id
-        assign_groups:
-          operationId: assignGroupsToChannel
-          parameters:
-            chanID: $response.body#/id
-        unassign_groups:
-          operationId: unassignGroupsFromChannel
           parameters:
             chanID: $response.body#/id
 
@@ -991,18 +963,6 @@ components:
           operationId: getChannel
           parameters:
             chanID: $response.body#/id
-        get_clients:
-          operationId: listClientsInaChannel
-          parameters:
-            chanID: $response.body#/id
-        get_users:
-          operationId: listChannelsConnectedToUser
-          parameters:
-            memberID: $response.body#/id
-        get_groups:
-          operationId: listChannelsConnectedToGroup
-          parameters:
-            memberID: $response.body#/id
         update:
           operationId: updateChannel
           parameters:
@@ -1015,22 +975,6 @@ components:
           operationId: enableChannel
           parameters:
             chanID: $response.body#/id
-        assign_users:
-          operationId: assignUsersToChannel
-          parameters:
-            chanID: $response.body#/id
-        unassign_users:
-          operationId: unassignUsersFromChannel
-          parameters:
-            chanID: $response.body#/id
-        assign_groups:
-          operationId: assignGroupsToChannel
-          parameters:
-            chanID: $response.body#/id
-        unassign_groups:
-          operationId: unassignGroupsFromChannel
-          parameters:
-            chanID: $response.body#/id
 
     ChannelRes:
       description: Data retrieved.
@@ -1039,32 +983,24 @@ components:
           schema:
             $ref: "#/components/schemas/Channel"
       links:
-        get_clients:
-          operationId: listClientsInaChannel
+        update:
+          operationId: updateChannel
           parameters:
             chanID: $response.body#/id
-        get_users:
-          operationId: listChannelsConnectedToUser
-          parameters:
-            memberID: $response.body#/id
-        get_groups:
-          operationId: listChannelsConnectedToGroup
-          parameters:
-            memberID: $response.body#/id
-        assign_users:
-          operationId: assignUsersToChannel
+        disable:
+          operationId: disableChannel
           parameters:
             chanID: $response.body#/id
-        unassign_users:
-          operationId: unassignUsersFromChannel
+        enable:
+          operationId: enableChannel
           parameters:
             chanID: $response.body#/id
-        assign_groups:
-          operationId: assignGroupsToChannel
+        set_parent_group:
+          operationId: setChannelParentGroup
           parameters:
             chanID: $response.body#/id
-        unassign_groups:
-          operationId: unassignGroupsFromChannel
+        remove_parent_group:
+          operationId: removeChannelParentGroup
           parameters:
             chanID: $response.body#/id
 

@@ -871,6 +871,8 @@ paths:
           description: Missing or invalid access token provided.
         "404":
           description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
         "500":
           $ref: "#/components/responses/ServiceError"
 
@@ -895,6 +897,8 @@ paths:
           description: Missing or invalid access token provided.
         "404":
           description: A non-existent entity request.
+        "422":
+          description: Database can't process request.
         "500":
           $ref: "#/components/responses/ServiceError"
 
@@ -1355,8 +1359,8 @@ components:
         delete:
           operationId: deleteInvitation
           parameters:
-            user_id: $response.body#/user_id
-            domain_id: $response.body#/domain_id
+            userID: $response.body#/user_id
+            domainID: $response.body#/domain_id
 
     InvitationPageRes:
       description: Data retrieved.
