@@ -234,7 +234,7 @@ var (
 	// ErrMissingUsername indicates missing user name.
 	ErrMissingUsername = errors.New("missing username")
 
-	// ErrInvalidUsername indicates missing user name.
+	// ErrInvalidUsername indicates invalid user name.
 	ErrInvalidUsername = errors.New("invalid username")
 
 	// ErrMissingFirstName indicates missing first name.

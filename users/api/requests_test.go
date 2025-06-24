@@ -16,10 +16,11 @@ import (
 )
 
 const (
-	valid   = "valid"
-	invalid = "invalid"
-	secret  = "QJg58*aMan7j"
-	name    = "user"
+	valid      = "valid"
+	invalid    = "invalid"
+	secret     = "QJg58*aMan7j"
+	name       = "user"
+	validEmail = "example@domain.com"
 )
 
 var validID = testsutil.GenerateUUID(&testing.T{})
@@ -37,9 +38,9 @@ func TestCreateUserReqValidate(t *testing.T) {
 					ID:        validID,
 					FirstName: valid,
 					LastName:  valid,
-					Email:     "example@domain.com",
+					Email:     validEmail,
 					Credentials: users.Credentials{
-						Username: "example",
+						Username: valid,
 						Secret:   secret,
 					},
 				},
@@ -65,7 +66,7 @@ func TestCreateUserReqValidate(t *testing.T) {
 					FirstName: valid,
 					LastName:  valid,
 					Credentials: users.Credentials{
-						Username: "example",
+						Username: valid,
 						Secret:   secret,
 					},
 				},
@@ -79,9 +80,9 @@ func TestCreateUserReqValidate(t *testing.T) {
 					ID:        validID,
 					FirstName: valid,
 					LastName:  valid,
-					Email:     "example@domain.com",
+					Email:     validEmail,
 					Credentials: users.Credentials{
-						Username: "example",
+						Username: valid,
 					},
 				},
 			},
@@ -94,14 +95,62 @@ func TestCreateUserReqValidate(t *testing.T) {
 					ID:        validID,
 					FirstName: valid,
 					LastName:  valid,
-					Email:     "example@domain.com",
+					Email:     validEmail,
 					Credentials: users.Credentials{
-						Username: "example",
+						Username: valid,
 						Secret:   "invalid",
 					},
 				},
 			},
 			err: apiutil.ErrPasswordFormat,
+		},
+		{
+			desc: "missing username in request",
+			req: createUserReq{
+				User: users.User{
+					ID:        validID,
+					FirstName: valid,
+					LastName:  valid,
+					Email:     validEmail,
+					Credentials: users.Credentials{
+						Username: "",
+						Secret:   secret,
+					},
+				},
+			},
+			err: apiutil.ErrMissingUsername,
+		},
+		{
+			desc: "username that is too long in request",
+			req: createUserReq{
+				User: users.User{
+					ID:        validID,
+					FirstName: valid,
+					LastName:  valid,
+					Email:     validEmail,
+					Credentials: users.Credentials{
+						Username: strings.Repeat("a", 33),
+						Secret:   secret,
+					},
+				},
+			},
+			err: apiutil.ErrInvalidUsername,
+		},
+		{
+			desc: "invalid username format in request",
+			req: createUserReq{
+				User: users.User{
+					ID:        validID,
+					FirstName: valid,
+					LastName:  valid,
+					Email:     validEmail,
+					Credentials: users.Credentials{
+						Username: "_invalid@username",
+						Secret:   secret,
+					},
+				},
+			},
+			err: apiutil.ErrInvalidUsername,
 		},
 	}
 	for _, tc := range cases {

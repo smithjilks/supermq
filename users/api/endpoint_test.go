@@ -222,6 +222,23 @@ func TestRegister(t *testing.T) {
 			status:      http.StatusBadRequest,
 			err:         apiutil.ErrValidation,
 		},
+		{
+			desc: "register user with invalid username",
+			user: users.User{
+				FirstName: "newuserwithinvalidusername",
+				LastName:  "newuserwithinvalidusername",
+				Email:     "user@example.com",
+				Credentials: users.Credentials{
+					Username: "invalid username",
+					Secret:   secret,
+				},
+				Status: users.EnabledStatus,
+			},
+			token:       validToken,
+			contentType: contentType,
+			status:      http.StatusBadRequest,
+			err:         apiutil.ErrValidation,
+		},
 	}
 
 	for _, tc := range cases {

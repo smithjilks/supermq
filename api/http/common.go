@@ -93,6 +93,7 @@ const (
 var (
 	nameRegExp        = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{34}[a-z0-9]$`)
 	routeRegExp       = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,35}$`)
+	userNameRegExp    = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$`)
 	errUnreadableName = errors.New("name containing double underscores or double dashes not allowed")
 )
 
@@ -127,6 +128,19 @@ func ValidateRoute(route string) error {
 
 	if strings.Contains(route, "__") || strings.Contains(route, "--") {
 		return errors.Wrap(apiutil.ErrInvalidRouteFormat, errUnreadableName)
+	}
+
+	return nil
+}
+
+// ValidateUserName validates user name format.
+func ValidateUserName(name string) error {
+	if !userNameRegExp.MatchString(name) {
+		return apiutil.ErrInvalidUsername
+	}
+
+	if strings.Contains(name, "__") || strings.Contains(name, "--") {
+		return errors.Wrap(apiutil.ErrInvalidUsername, errUnreadableName)
 	}
 
 	return nil

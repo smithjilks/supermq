@@ -35,6 +35,9 @@ func (req createUserReq) validate() error {
 	if req.User.Credentials.Username == "" {
 		return apiutil.ErrMissingUsername
 	}
+	if err := api.ValidateUserName(req.User.Credentials.Username); err != nil {
+		return err
+	}
 	// Username must not be a valid email format due to username/email login.
 	if _, err := mail.ParseAddress(req.User.Credentials.Username); err == nil {
 		return apiutil.ErrInvalidUsername
