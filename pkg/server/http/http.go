@@ -5,6 +5,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -44,11 +45,12 @@ func (s *httpServer) Start() error {
 			return err
 		}
 
+		s.server.TLSConfig = &tls.Config{
+			Certificates: []tls.Certificate{certs},
+		}
 		s.Protocol = httpsProtocol
-		tlsConf := s.server.TLSConfig.Clone()
-		tlsConf.Certificates = append(tlsConf.Certificates, certs)
-		s.server.TLSConfig = tlsConf
-		s.Logger.Info(fmt.Sprintf("%s service %s server listening at %s with TLS cert %s and key %s", s.Name, s.Protocol, s.Address, s.Config.CertFile, s.Config.KeyFile))
+
+		s.Logger.Info(fmt.Sprintf("%s service %s server listening at %s with TLS", s.Name, s.Protocol, s.Address))
 		go func() {
 			errCh <- s.server.ListenAndServeTLS("", "")
 		}()
@@ -58,6 +60,7 @@ func (s *httpServer) Start() error {
 			errCh <- s.server.ListenAndServe()
 		}()
 	}
+
 	select {
 	case <-s.Ctx.Done():
 		return s.Stop()
