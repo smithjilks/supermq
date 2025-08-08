@@ -95,9 +95,9 @@ func (s *grpcServer) Start() error {
 		case mtlsCA != "":
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 			creds = grpc.Creds(credentials.NewTLS(tlsConfig))
-			s.Logger.Info(fmt.Sprintf("%s service gRPC server listening at %s with TLS/mTLS cert %s , key %s and %s", s.Name, s.Address, s.Config.CertFile, s.Config.KeyFile, mtlsCA))
+			s.Logger.Info(fmt.Sprintf("%s service gRPC server listening at %s with TLS/mTLS", s.Name, s.Address))
 		default:
-			s.Logger.Info(fmt.Sprintf("%s service gRPC server listening at %s with TLS cert %s and key %s", s.Name, s.Address, s.Config.CertFile, s.Config.KeyFile))
+			s.Logger.Info(fmt.Sprintf("%s service gRPC server listening at %s with TLS cert", s.Name, s.Address))
 		}
 	default:
 		s.Logger.Info(fmt.Sprintf("%s service gRPC server listening at %s without TLS", s.Name, s.Address))
