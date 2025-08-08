@@ -45,9 +45,13 @@ func (s *httpServer) Start() error {
 			return err
 		}
 
-		s.server.TLSConfig = &tls.Config{
-			Certificates: []tls.Certificate{certs},
+		if s.server.TLSConfig == nil {
+			s.server.TLSConfig = &tls.Config{}
 		}
+
+		tlsConf := s.server.TLSConfig.Clone()
+		tlsConf.Certificates = append(tlsConf.Certificates, certs)
+		s.server.TLSConfig = tlsConf
 		s.Protocol = httpsProtocol
 
 		s.Logger.Info(fmt.Sprintf("%s service %s server listening at %s with TLS", s.Name, s.Protocol, s.Address))
