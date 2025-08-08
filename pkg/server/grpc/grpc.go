@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
 	"time"
 
 	"github.com/absmach/supermq/pkg/server"
@@ -56,7 +55,7 @@ func (s *grpcServer) Start() error {
 
 	switch {
 	case s.Config.CertFile != "" || s.Config.KeyFile != "":
-		certificate, err := loadX509KeyPair(s.Config.CertFile, s.Config.KeyFile)
+		certificate, err := server.LoadX509KeyPair(s.Config.CertFile, s.Config.KeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to load auth gRPC client certificates: %w", err)
 		}
@@ -67,7 +66,7 @@ func (s *grpcServer) Start() error {
 
 		var mtlsCA string
 		// Loading Server CA file
-		rootCA, err := loadRootCACerts(s.Config.ServerCAFile)
+		rootCA, err := server.LoadRootCACerts(s.Config.ServerCAFile)
 		if err != nil {
 			return fmt.Errorf("failed to load root ca file: %w", err)
 		}
@@ -80,7 +79,7 @@ func (s *grpcServer) Start() error {
 		}
 
 		// Loading Client CA File
-		clientCA, err := loadRootCACerts(s.Config.ClientCAFile)
+		clientCA, err := server.LoadRootCACerts(s.Config.ClientCAFile)
 		if err != nil {
 			return fmt.Errorf("failed to load client ca file: %w", err)
 		}
@@ -140,41 +139,4 @@ func (s *grpcServer) Stop() error {
 	s.Logger.Info(fmt.Sprintf("%s gRPC service shutdown at %s", s.Name, s.Address))
 
 	return nil
-}
-
-func readFileOrData(input string) ([]byte, error) {
-	if _, err := os.Stat(input); err == nil {
-		return os.ReadFile(input)
-	}
-	return []byte(input), nil
-}
-
-func loadRootCACerts(input string) (*x509.CertPool, error) {
-	pemData, err := readFileOrData(input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load root CA data: %w", err)
-	}
-
-	if len(pemData) > 0 {
-		capool := x509.NewCertPool()
-		if !capool.AppendCertsFromPEM(pemData) {
-			return nil, fmt.Errorf("failed to append root ca to tls.Config")
-		}
-		return capool, nil
-	}
-	return nil, nil
-}
-
-func loadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
-	cert, err := readFileOrData(certFile)
-	if err != nil {
-		return tls.Certificate{}, fmt.Errorf("failed to read cert: %v", err)
-	}
-
-	key, err := readFileOrData(keyFile)
-	if err != nil {
-		return tls.Certificate{}, fmt.Errorf("failed to read key: %v", err)
-	}
-
-	return tls.X509KeyPair(cert, key)
 }

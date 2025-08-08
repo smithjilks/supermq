@@ -255,7 +255,7 @@ func proxyHTTP(ctx context.Context, cfg server.Config, logger *slog.Logger, sess
 		TargetPath:     targetHTTPPath,
 	}
 	if cfg.CertFile != "" || cfg.KeyFile != "" {
-		tlsCert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+		tlsCert, err := server.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 		if err != nil {
 			return err
 		}
