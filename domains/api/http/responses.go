@@ -18,7 +18,6 @@ var (
 	_ supermq.Response = (*disableDomainRes)(nil)
 	_ supermq.Response = (*freezeDomainRes)(nil)
 	_ supermq.Response = (*sendInvitationRes)(nil)
-	_ supermq.Response = (*viewInvitationRes)(nil)
 	_ supermq.Response = (*listInvitationsRes)(nil)
 	_ supermq.Response = (*acceptInvitationRes)(nil)
 	_ supermq.Response = (*rejectInvitationRes)(nil)
@@ -145,22 +144,6 @@ func (res sendInvitationRes) Headers() map[string]string {
 
 func (res sendInvitationRes) Empty() bool {
 	return true
-}
-
-type viewInvitationRes struct {
-	domains.Invitation `json:",inline"`
-}
-
-func (res viewInvitationRes) Code() int {
-	return http.StatusOK
-}
-
-func (res viewInvitationRes) Headers() map[string]string {
-	return map[string]string{}
-}
-
-func (res viewInvitationRes) Empty() bool {
-	return false
 }
 
 type listInvitationsRes struct {
