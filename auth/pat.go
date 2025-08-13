@@ -296,6 +296,7 @@ type PAT struct {
 	Name        string    `json:"name,omitempty"`
 	Description string    `json:"description,omitempty"`
 	Secret      string    `json:"secret,omitempty"`
+	Role        Role      `json:"role,omitempty"`
 	IssuedAt    time.Time `json:"issued_at,omitempty"`
 	ExpiresAt   time.Time `json:"expires_at,omitempty"`
 	UpdatedAt   time.Time `json:"updated_at,omitempty"`
@@ -339,6 +340,20 @@ func (pat PAT) MarshalBinary() ([]byte, error) {
 
 func (pat *PAT) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, pat)
+}
+
+// Validate checks if the PAT has valid fields.
+func (pat *PAT) Validate() error {
+	if pat == nil {
+		return errors.New("PAT cannot be nil")
+	}
+	if pat.Name == "" {
+		return errors.New("PAT name cannot be empty")
+	}
+	if pat.User == "" {
+		return errors.New("PAT user cannot be empty")
+	}
+	return nil
 }
 
 func (pat *PAT) String() string {
