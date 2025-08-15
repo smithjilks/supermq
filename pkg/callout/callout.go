@@ -13,7 +13,6 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
-	_ "os"
 	"time"
 
 	"github.com/absmach/supermq/pkg/errors"
