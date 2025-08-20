@@ -5,7 +5,7 @@ asyncapi: '2.6.0'
 id: 'https://github.com/absmach/supermq/blob/main/api/asyncapi/mqtt.yaml'
 info:
   title: SuperMQ MQTT Adapter
-  version: '1.0.0'
+  version: '0.18.0'
   contact:
     name: SuperMQ Team
     url: 'https://github.com/absmach/supermq'
