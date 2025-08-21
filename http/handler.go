@@ -36,7 +36,6 @@ const (
 
 // Log message formats.
 const (
-	logInfoConnected         = "connected with client_key %s"
 	logInfoPublished         = "published with client_type %s client_id %s to the topic %s"
 	logInfoFailedAuthNToken  = "failed to authenticate token for topic %s with error %s"
 	logInfoFailedAuthNClient = "failed to authenticate client key %s for topic %s with error %s"
@@ -81,17 +80,10 @@ func (h *handler) AuthConnect(ctx context.Context) error {
 		return errClientNotInitialized
 	}
 
-	var tok string
-	switch {
-	case string(s.Password) == "":
+	if string(s.Password) == "" {
 		return mgate.NewHTTPProxyError(http.StatusBadRequest, errors.Wrap(apiutil.ErrValidation, apiutil.ErrBearerKey))
-	case strings.HasPrefix(string(s.Password), apiutil.ClientPrefix):
-		tok = strings.TrimPrefix(string(s.Password), apiutil.ClientPrefix)
-	default:
-		tok = string(s.Password)
 	}
 
-	h.logger.Info(fmt.Sprintf(logInfoConnected, tok))
 	return nil
 }
 
@@ -149,18 +141,19 @@ func (h *handler) Publish(ctx context.Context, topic *string, payload *[]byte) e
 			return mgate.NewHTTPProxyError(http.StatusUnauthorized, svcerr.ErrAuthentication)
 		}
 		clientType = policies.UserType
-		clientID = authnSession.DomainUserID
+		clientID = authnSession.UserID
 	default:
 		return mgate.NewHTTPProxyError(http.StatusUnauthorized, svcerr.ErrAuthentication)
 	}
 
 	msg := messaging.Message{
-		Protocol: protocol,
-		Domain:   domainID,
-		Channel:  channelID,
-		Subtopic: subtopic,
-		Payload:  *payload,
-		Created:  time.Now().UnixNano(),
+		Protocol:  protocol,
+		Domain:    domainID,
+		Channel:   channelID,
+		Subtopic:  subtopic,
+		Publisher: clientID,
+		Payload:   *payload,
+		Created:   time.Now().UnixNano(),
 	}
 
 	ar := &grpcChannelsV1.AuthzReq{
@@ -176,10 +169,6 @@ func (h *handler) Publish(ctx context.Context, topic *string, payload *[]byte) e
 	}
 	if !res.GetAuthorized() {
 		return mgate.NewHTTPProxyError(http.StatusUnauthorized, svcerr.ErrAuthorization)
-	}
-
-	if clientType == policies.ClientType {
-		msg.Publisher = clientID
 	}
 
 	if err := h.publisher.Publish(ctx, messaging.EncodeMessageTopic(&msg), &msg); err != nil {

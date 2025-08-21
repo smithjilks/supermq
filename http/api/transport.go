@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	ctSenmlJSON = "application/senml+json"
-	ctSenmlCBOR = "application/senml+cbor"
-	contentType = "application/json"
+	ctSenmlJSON    = "application/senml+json"
+	ctSenmlCBOR    = "application/senml+cbor"
+	contentType    = "application/json"
+	authzHeaderKey = "Authorization"
 )
 
 // MakeHandler returns a HTTP handler for API endpoints.
@@ -64,7 +65,7 @@ func decodeRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	case ok:
 		req.token = pass
 	case !ok:
-		req.token = apiutil.ExtractClientSecret(r)
+		req.token = r.Header.Get(authzHeaderKey)
 	}
 
 	payload, err := io.ReadAll(r.Body)

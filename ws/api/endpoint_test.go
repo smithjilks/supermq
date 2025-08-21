@@ -39,6 +39,7 @@ const (
 	clientKey  = "c02ff576-ccd5-40f6-ba5f-c85377aad529"
 	protocol   = "ws"
 	instanceID = "5de9b29a-feb9-11ed-be56-0242ac120002"
+	validToken = "Bearer token"
 )
 
 var (
@@ -49,7 +50,8 @@ var (
 
 func newService(clients grpcClientsV1.ClientsServiceClient, channels grpcChannelsV1.ChannelsServiceClient) (ws.Service, *mocks.PubSub) {
 	pubsub := new(mocks.PubSub)
-	return ws.New(clients, channels, pubsub), pubsub
+	authn := new(authnMocks.Authentication)
+	return ws.New(clients, channels, authn, pubsub), pubsub
 }
 
 func newHTTPServer(svc ws.Service, resolver messaging.TopicResolver) *httptest.Server {
@@ -77,7 +79,7 @@ func newProxyHTPPServer(svc session.Handler, targetServer *httptest.Server) (*ht
 	return httptest.NewServer(http.HandlerFunc(mp.ServeHTTP)), nil
 }
 
-func makeURL(tsURL, domainID, chanID, subtopic, clientKey string, header bool) (string, error) {
+func makeURL(tsURL, domainID, chanID, subtopic, authKey string, header bool) (string, error) {
 	u, _ := url.Parse(tsURL)
 	u.Scheme = protocol
 
@@ -85,7 +87,7 @@ func makeURL(tsURL, domainID, chanID, subtopic, clientKey string, header bool) (
 		if header {
 			return fmt.Sprintf("%s/m/%s/c/%s", u, domainID, chanID), fmt.Errorf("invalid channel id")
 		}
-		return fmt.Sprintf("%s/m/%s/c/%s?authorization=%s", u, domainID, chanID, clientKey), fmt.Errorf("invalid channel id")
+		return fmt.Sprintf("%s/m/%s/c/%s?authorization=%s", u, domainID, chanID, authKey), fmt.Errorf("invalid channel id")
 	}
 
 	subtopicPart := ""
@@ -96,16 +98,16 @@ func makeURL(tsURL, domainID, chanID, subtopic, clientKey string, header bool) (
 		return fmt.Sprintf("%s/m/%s/c/%s%s", u, domainID, chanID, subtopicPart), nil
 	}
 
-	return fmt.Sprintf("%s/m/%s/c/%s%s?authorization=%s", u, domainID, chanID, subtopicPart, clientKey), nil
+	return fmt.Sprintf("%s/m/%s/c/%s%s?authorization=%s", u, domainID, chanID, subtopicPart, authKey), nil
 }
 
-func handshake(tsURL, domainID, chanID, subtopic, clientKey string, addHeader bool) (*websocket.Conn, *http.Response, error) {
+func handshake(tsURL, domainID, chanID, subtopic, authKey string, addHeader bool) (*websocket.Conn, *http.Response, error) {
 	header := http.Header{}
 	if addHeader {
-		header.Add("Authorization", clientKey)
+		header.Add("Authorization", authKey)
 	}
 
-	turl, _ := makeURL(tsURL, domainID, chanID, subtopic, clientKey, addHeader)
+	turl, _ := makeURL(tsURL, domainID, chanID, subtopic, authKey, addHeader)
 	conn, res, errRet := websocket.DefaultDialer.Dial(turl, header)
 
 	return conn, res, errRet
@@ -138,111 +140,121 @@ func TestHandshake(t *testing.T) {
 	channels.On("Authorize", mock.Anything, mock.Anything, mock.Anything).Return(&grpcChannelsV1.AuthzRes{Authorized: true}, nil)
 
 	cases := []struct {
-		desc      string
-		domainID  string
-		chanID    string
-		subtopic  string
-		header    bool
-		clientKey string
-		status    int
-		err       error
-		msg       []byte
+		desc     string
+		domainID string
+		chanID   string
+		subtopic string
+		header   bool
+		authKey  string
+		status   int
+		err      error
+		msg      []byte
 	}{
 		{
-			desc:      "connect and send message",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  "",
-			header:    true,
-			clientKey: clientKey,
-			status:    http.StatusSwitchingProtocols,
-			msg:       msg,
+			desc:     "connect and send message",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "",
+			header:   true,
+			authKey:  clientKey,
+			status:   http.StatusSwitchingProtocols,
+			msg:      msg,
 		},
 		{
-			desc:      "connect and send message with clientKey as query parameter",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  "",
-			header:    false,
-			clientKey: clientKey,
-			status:    http.StatusSwitchingProtocols,
-			msg:       msg,
+			desc:     "connect and send message with clientKey as query parameter",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "",
+			header:   false,
+			authKey:  clientKey,
+			status:   http.StatusSwitchingProtocols,
+			msg:      msg,
 		},
 		{
-			desc:      "connect and send message that cannot be published",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  "",
-			header:    true,
-			clientKey: clientKey,
-			status:    http.StatusSwitchingProtocols,
-			msg:       []byte{},
+			desc:     "connect and send message with valid token",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "",
+			header:   true,
+			authKey:  validToken,
+			status:   http.StatusSwitchingProtocols,
+			msg:      msg,
 		},
 		{
-			desc:      "connect and send message to subtopic",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  "subtopic",
-			header:    true,
-			clientKey: clientKey,
-			status:    http.StatusSwitchingProtocols,
-			msg:       msg,
+			desc:     "connect and send message that cannot be published",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "",
+			header:   true,
+			authKey:  clientKey,
+			status:   http.StatusSwitchingProtocols,
+			msg:      []byte{},
 		},
 		{
-			desc:      "connect and send message to nested subtopic",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  "subtopic/nested",
-			header:    true,
-			clientKey: clientKey,
-			status:    http.StatusSwitchingProtocols,
-			msg:       msg,
+			desc:     "connect and send message to subtopic",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "subtopic",
+			header:   true,
+			authKey:  clientKey,
+			status:   http.StatusSwitchingProtocols,
+			msg:      msg,
 		},
 		{
-			desc:      "connect and send message to all subtopics",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  ">",
-			header:    true,
-			clientKey: clientKey,
-			status:    http.StatusSwitchingProtocols,
-			msg:       msg,
+			desc:     "connect and send message to nested subtopic",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "subtopic/nested",
+			header:   true,
+			authKey:  clientKey,
+			status:   http.StatusSwitchingProtocols,
+			msg:      msg,
 		},
 		{
-			desc:      "connect to empty channel",
-			domainID:  domainID,
-			chanID:    "",
-			subtopic:  "",
-			header:    true,
-			clientKey: clientKey,
-			status:    http.StatusUnauthorized,
-			msg:       []byte{},
+			desc:     "connect and send message to all subtopics",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: ">",
+			header:   true,
+			authKey:  clientKey,
+			status:   http.StatusSwitchingProtocols,
+			msg:      msg,
 		},
 		{
-			desc:      "connect with empty clientKey",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  "",
-			header:    true,
-			clientKey: "",
-			status:    http.StatusUnauthorized,
-			msg:       []byte{},
+			desc:     "connect to empty channel",
+			domainID: domainID,
+			chanID:   "",
+			subtopic: "",
+			header:   true,
+			authKey:  clientKey,
+			status:   http.StatusUnauthorized,
+			msg:      []byte{},
 		},
 		{
-			desc:      "connect and send message to subtopic with invalid name",
-			domainID:  domainID,
-			chanID:    id,
-			subtopic:  "sub/a*b/topic",
-			header:    true,
-			clientKey: clientKey,
-			status:    http.StatusUnauthorized,
-			msg:       msg,
+			desc:     "connect with empty clientKey",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "",
+			header:   true,
+			authKey:  "",
+			status:   http.StatusUnauthorized,
+			msg:      []byte{},
+		},
+		{
+			desc:     "connect and send message to subtopic with invalid name",
+			domainID: domainID,
+			chanID:   id,
+			subtopic: "sub/a*b/topic",
+			header:   true,
+			authKey:  clientKey,
+			status:   http.StatusUnauthorized,
+			msg:      msg,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
-			conn, res, err := handshake(ts.URL, tc.domainID, tc.chanID, tc.subtopic, tc.clientKey, tc.header)
+			conn, res, err := handshake(ts.URL, tc.domainID, tc.chanID, tc.subtopic, tc.authKey, tc.header)
 			assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code '%d' got '%d'\n", tc.desc, tc.status, res.StatusCode))
 
 			if tc.status == http.StatusSwitchingProtocols {

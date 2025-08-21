@@ -31,6 +31,7 @@ import (
 	smqauthn "github.com/absmach/supermq/pkg/authn"
 	authnMocks "github.com/absmach/supermq/pkg/authn/mocks"
 	"github.com/absmach/supermq/pkg/connections"
+	svcerr "github.com/absmach/supermq/pkg/errors/service"
 	"github.com/absmach/supermq/pkg/messaging"
 	pubsub "github.com/absmach/supermq/pkg/messaging/mocks"
 	"github.com/absmach/supermq/pkg/policies"
@@ -47,6 +48,7 @@ var (
 	clientID = testsutil.GenerateUUID(&testing.T{})
 	chanID   = testsutil.GenerateUUID(&testing.T{})
 	domainID = testsutil.GenerateUUID(&testing.T{})
+	userID   = testsutil.GenerateUUID(&testing.T{})
 )
 
 func newService(authn smqauthn.Authentication, clients grpcClientsV1.ClientsServiceClient, channels grpcChannelsV1.ChannelsServiceClient, domains grpcDomainsV1.DomainsServiceClient) (session.Handler, *pubsub.PubSub, error) {
@@ -91,6 +93,7 @@ type testRequest struct {
 	token       string
 	body        io.Reader
 	basicAuth   bool
+	bearerToken bool
 }
 
 func (tr testRequest) make() (*http.Response, error) {
@@ -100,10 +103,14 @@ func (tr testRequest) make() (*http.Response, error) {
 	}
 
 	if tr.token != "" {
-		req.Header.Set("Authorization", apiutil.ClientPrefix+tr.token)
-	}
-	if tr.basicAuth && tr.token != "" {
-		req.SetBasicAuth("", apiutil.ClientPrefix+tr.token)
+		switch {
+		case tr.basicAuth:
+			req.SetBasicAuth("", apiutil.ClientPrefix+tr.token)
+		case tr.bearerToken:
+			req.Header.Set("Authorization", apiutil.BearerPrefix+tr.token)
+		default:
+			req.Header.Set("Authorization", apiutil.ClientPrefix+tr.token)
+		}
 	}
 	if tr.contentType != "" {
 		req.Header.Set("Content-Type", tr.contentType)
@@ -121,6 +128,8 @@ func TestPublish(t *testing.T) {
 	ctJSON := "application/json"
 	clientKey := "client_key"
 	invalidKey := invalidValue
+	validToken := "token"
+	invalidToken := "invalid_token"
 	msg := `[{"n":"current","t":-1,"v":1.6}]`
 	msgJSON := `{"field1":"val1","field2":"val2"}`
 	msgCBOR := `81A3616E6763757272656E746174206176FB3FF999999999999A`
@@ -137,13 +146,17 @@ func TestPublish(t *testing.T) {
 		desc        string
 		domainID    string
 		chanID      string
+		clientID    string
+		clientType  string
 		msg         string
 		contentType string
 		key         string
 		status      int
 		basicAuth   bool
+		bearerToken bool
 		authnErr    error
 		authnRes    *grpcClientsV1.AuthnRes
+		authnRes1   smqauthn.Session
 		authzRes    *grpcChannelsV1.AuthzRes
 		authzErr    error
 		err         error
@@ -152,6 +165,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message successfully",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msg,
 			contentType: ctSenmlJSON,
 			key:         clientKey,
@@ -163,6 +177,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message with application/senml+cbor content-type",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msgCBOR,
 			contentType: ctSenmlCBOR,
 			key:         clientKey,
@@ -174,6 +189,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message with application/json content-type",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msgJSON,
 			contentType: ctJSON,
 			key:         clientKey,
@@ -185,6 +201,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message with empty key",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msg,
 			contentType: ctSenmlJSON,
 			key:         "",
@@ -194,6 +211,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message with basic auth",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msg,
 			contentType: ctSenmlJSON,
 			key:         clientKey,
@@ -206,6 +224,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message with invalid key",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msg,
 			contentType: ctSenmlJSON,
 			key:         invalidKey,
@@ -216,6 +235,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message with invalid basic auth",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msg,
 			contentType: ctSenmlJSON,
 			key:         invalidKey,
@@ -224,9 +244,36 @@ func TestPublish(t *testing.T) {
 			authnRes:    &grpcClientsV1.AuthnRes{Authenticated: false},
 		},
 		{
+			desc:        "publish message with valid bearer token",
+			domainID:    domainID,
+			chanID:      chanID,
+			clientID:    userID,
+			msg:         msg,
+			contentType: ctSenmlJSON,
+			key:         validToken,
+			bearerToken: true,
+			status:      http.StatusAccepted,
+			authnRes1:   smqauthn.Session{UserID: userID},
+			authzRes:    &grpcChannelsV1.AuthzRes{Authorized: true},
+		},
+		{
+			desc:        "publish message with invalid bearer token",
+			domainID:    domainID,
+			chanID:      chanID,
+			clientID:    userID,
+			msg:         msg,
+			contentType: ctSenmlJSON,
+			key:         invalidToken,
+			bearerToken: true,
+			status:      http.StatusUnauthorized,
+			authnRes1:   smqauthn.Session{},
+			authnErr:    svcerr.ErrAuthentication,
+		},
+		{
 			desc:        "publish message without content type",
 			domainID:    domainID,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msg,
 			contentType: "",
 			key:         clientKey,
@@ -238,6 +285,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message to empty channel",
 			domainID:    domainID,
 			chanID:      "",
+			clientID:    clientID,
 			msg:         msg,
 			contentType: ctSenmlJSON,
 			key:         clientKey,
@@ -249,6 +297,7 @@ func TestPublish(t *testing.T) {
 			desc:        "publish message with invalid domain ID",
 			domainID:    invalidValue,
 			chanID:      chanID,
+			clientID:    clientID,
 			msg:         msg,
 			contentType: ctSenmlJSON,
 			key:         clientKey,
@@ -261,12 +310,17 @@ func TestPublish(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			clientsCall := clients.On("Authenticate", mock.Anything, &grpcClientsV1.AuthnReq{Token: smqauthn.AuthPack(smqauthn.DomainAuth, tc.domainID, tc.key)}).Return(tc.authnRes, tc.authnErr)
+			authCall := authn.On("Authenticate", mock.Anything, tc.key).Return(tc.authnRes1, tc.authnErr)
 			domainsCall := domains.On("RetrieveIDByRoute", mock.Anything, mock.Anything).Return(&grpcCommonV1.RetrieveEntityRes{Entity: &grpcCommonV1.EntityBasic{Id: tc.domainID}}, nil)
+			tc.clientType = policies.ClientType
+			if tc.bearerToken {
+				tc.clientType = policies.UserType
+			}
 			channelsCall := channels.On("Authorize", mock.Anything, &grpcChannelsV1.AuthzReq{
 				DomainId:   tc.domainID,
 				ChannelId:  tc.chanID,
-				ClientId:   clientID,
-				ClientType: policies.ClientType,
+				ClientId:   tc.clientID,
+				ClientType: tc.clientType,
 				Type:       uint32(connections.Publish),
 			}).Return(tc.authzRes, tc.authzErr)
 			svcCall := pub.On("Publish", mock.Anything, messaging.EncodeTopicSuffix(tc.domainID, tc.chanID, ""), mock.Anything).Return(nil)
@@ -278,12 +332,14 @@ func TestPublish(t *testing.T) {
 				token:       tc.key,
 				body:        strings.NewReader(tc.msg),
 				basicAuth:   tc.basicAuth,
+				bearerToken: tc.bearerToken,
 			}
 			res, err := req.make()
 			assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
 			assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
 			svcCall.Unset()
 			clientsCall.Unset()
+			authCall.Unset()
 			channelsCall.Unset()
 			domainsCall.Unset()
 		})

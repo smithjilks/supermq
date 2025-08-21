@@ -54,6 +54,7 @@ var (
 		Password: []byte(clientKey),
 	}
 	validToken                  = "token"
+	invalidToken                = "invalid_token"
 	validID                     = testsutil.GenerateUUID(&testing.T{})
 	errClientNotInitialized     = errors.New("client is not initialized")
 	errMissingTopicPub          = errors.New("failed to publish due to missing topic")
@@ -148,6 +149,9 @@ func TestPublish(t *testing.T) {
 	tokenSession := session.Session{
 		Password: []byte(apiutil.BearerPrefix + validToken),
 	}
+	invalidTokenSession := session.Session{
+		Password: []byte(apiutil.BearerPrefix + invalidToken),
+	}
 	cases := []struct {
 		desc       string
 		topic      *string
@@ -189,6 +193,18 @@ func TestPublish(t *testing.T) {
 			authZRes:  &grpcChannelsV1.AuthzRes{Authorized: true},
 			authZErr:  nil,
 			err:       nil,
+		},
+		{
+			desc:      "publish with invalid token",
+			topic:     &topic,
+			payload:   &payload,
+			password:  invalidToken,
+			session:   &invalidTokenSession,
+			channelID: chanID,
+			authNRes1: smqauthn.Session{},
+			authNErr:  svcerr.ErrAuthentication,
+			status:    http.StatusUnauthorized,
+			err:       svcerr.ErrAuthentication,
 		},
 		{
 			desc:      "publish  with key and subtopic successfully",

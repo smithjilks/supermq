@@ -20,6 +20,7 @@ import (
 	grpcChannelsV1 "github.com/absmach/supermq/api/grpc/channels/v1"
 	grpcClientsV1 "github.com/absmach/supermq/api/grpc/clients/v1"
 	smqlog "github.com/absmach/supermq/logger"
+	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/authn/authsvc"
 	domainsAuthz "github.com/absmach/supermq/pkg/domains/grpcclient"
 	"github.com/absmach/supermq/pkg/grpcclient"
@@ -209,7 +210,7 @@ func main() {
 		return
 	}
 
-	svc := newService(clientsClient, channelsClient, nps, logger, tracer)
+	svc := newService(clientsClient, channelsClient, authn, nps, logger, tracer)
 
 	hs := httpserver.NewServer(ctx, cancel, svcName, targetServerConfig, httpapi.MakeHandler(ctx, svc, resolver, logger, cfg.InstanceID), logger)
 
@@ -236,8 +237,8 @@ func main() {
 	}
 }
 
-func newService(clientsClient grpcClientsV1.ClientsServiceClient, channels grpcChannelsV1.ChannelsServiceClient, nps messaging.PubSub, logger *slog.Logger, tracer trace.Tracer) ws.Service {
-	svc := ws.New(clientsClient, channels, nps)
+func newService(clientsClient grpcClientsV1.ClientsServiceClient, channels grpcChannelsV1.ChannelsServiceClient, authn authn.Authentication, nps messaging.PubSub, logger *slog.Logger, tracer trace.Tracer) ws.Service {
+	svc := ws.New(clientsClient, channels, authn, nps)
 	svc = tracing.New(tracer, svc)
 	svc = httpapi.LoggingMiddleware(svc, logger)
 	counter, latency := prometheus.MakeMetrics("ws_adapter", "api")
