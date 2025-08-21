@@ -84,7 +84,11 @@ func newCalloutClient(ctls bool, certPath, keyPath, caPath string, timeout time.
 		if err != nil {
 			return nil, err
 		}
+
 		caCert, err := server.LoadRootCACerts(caPath)
+		if err != nil {
+			return nil, err
+		}
 		tlsConfig.RootCAs = caCert
 		tlsConfig.Certificates = []tls.Certificate{clientTLSCert}
 	}
