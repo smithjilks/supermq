@@ -20,7 +20,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.24.x
+          go-version: 1.25.x
           cache-dependency-path: "go.sum"
 
       - name: Install protolint
@@ -34,7 +34,7 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.1.6
+          version: v2.4.0
           args: --config ./tools/config/.golangci.yaml
 
       - name: Build all Binaries
@@ -63,7 +63,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.24.x
+          go-version: 1.25.x
           cache-dependency-path: "go.sum"
 
       - name: Check for changes in specific paths
