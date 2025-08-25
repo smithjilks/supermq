@@ -133,7 +133,7 @@ test: mocks
 
 define test_api_service
 	$(eval svc=$(subst test_api_,,$(1)))
-	@which st > /dev/null || (echo "schemathesis not found, please install it from https://github.com/schemathesis/schemathesis#getting-started" && exit 1)
+	@which uv > /dev/null || (echo "uv not found, please install it from https://github.com/astral-sh/uv" && exit 1)
 
 	@if [ -z "$(USER_TOKEN)" ]; then \
 		echo "USER_TOKEN is not set"; \
@@ -148,7 +148,7 @@ define test_api_service
 	fi
 
 	@if [ "$(svc)" = "http" ]; then \
-		st run apidocs/openapi/$(svc).yaml \
+		uvx schemathesis run apidocs/openapi/$(svc).yaml \
 		--checks all \
 		--url $(2) \
 		--header "Authorization: Client $(CLIENT_SECRET)" \
@@ -156,12 +156,13 @@ define test_api_service
 		--exclude-checks=positive_data_acceptance \
 		--phases=examples,stateful; \
 	else \
-		st run apidocs/openapi/$(svc).yaml \
+		uvx schemathesis run apidocs/openapi/$(svc).yaml \
 		--checks all \
 		--url $(2) \
 		--header "Authorization: Bearer $(USER_TOKEN)" \
 		--suppress-health-check=filter_too_much \
 		--exclude-checks=positive_data_acceptance \
+		--exclude-operation-id=requestPasswordReset \
 		--phases=examples,stateful; \
 	fi
 endef

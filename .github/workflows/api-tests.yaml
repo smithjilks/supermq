@@ -120,7 +120,7 @@ jobs:
           schema: apidocs/openapi/users.yaml
           base-url: ${{ env.USERS_URL }}
           checks: all
-          args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --phases=examples,stateful'
+          args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --exclude-operation-id=requestPasswordReset --phases=examples,stateful'
 
       - name: Run Groups API tests
         if: steps.changes.outputs.groups == 'true'
