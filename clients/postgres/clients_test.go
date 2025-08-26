@@ -879,7 +879,7 @@ func TestRetrieveAll(t *testing.T) {
 				"department": namegen.Generate(),
 			},
 			Status:    clients.EnabledStatus,
-			CreatedAt: time.Now().UTC(),
+			CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}
 		if i%50 == 0 {
 			client.Status = clients.DisabledStatus
@@ -1355,7 +1355,7 @@ func TestSearchClients(t *testing.T) {
 			},
 			Metadata:  clients.Metadata{},
 			Status:    clients.EnabledStatus,
-			CreatedAt: time.Now().UTC().Truncate(time.Millisecond),
+			CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}
 		_, err := repo.Save(context.Background(), client)
 		require.Nil(t, err, fmt.Sprintf("save client unexpected error: %s", err))
