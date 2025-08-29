@@ -257,8 +257,7 @@ func (am *authorizationMiddleware) ListGroups(ctx context.Context, session authn
 		}
 	}
 
-	err := am.checkSuperAdmin(ctx, session.UserID)
-	if err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 		return am.svc.ListGroups(ctx, session, gm)
 	}
@@ -284,8 +283,7 @@ func (am *authorizationMiddleware) ListGroups(ctx context.Context, session authn
 }
 
 func (am *authorizationMiddleware) ListUserGroups(ctx context.Context, session authn.Session, userID string, pm groups.PageMeta) (groups.Page, error) {
-	err := am.checkSuperAdmin(ctx, session.UserID)
-	if err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 		return am.svc.ListGroups(ctx, session, pm)
 	}
@@ -682,10 +680,13 @@ func (am *authorizationMiddleware) ListChildrenGroups(ctx context.Context, sessi
 	return am.svc.ListChildrenGroups(ctx, session, id, startLevel, endLevel, pm)
 }
 
-func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, adminID string) error {
+func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, session authn.Session) error {
+	if session.Role != authn.AdminRole {
+		return svcerr.ErrSuperAdminAction
+	}
 	if err := am.authz.Authorize(ctx, smqauthz.PolicyReq{
 		SubjectType: policies.UserType,
-		Subject:     adminID,
+		Subject:     session.UserID,
 		Permission:  policies.AdminPermission,
 		ObjectType:  policies.PlatformType,
 		Object:      policies.SuperMQObject,

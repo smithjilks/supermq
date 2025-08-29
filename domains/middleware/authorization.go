@@ -69,7 +69,7 @@ func (am *authorizationMiddleware) CreateDomain(ctx context.Context, session aut
 }
 
 func (am *authorizationMiddleware) RetrieveDomain(ctx context.Context, session authn.Session, id string, withRoles bool) (domains.Domain, error) {
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 		return am.svc.RetrieveDomain(ctx, session, id, withRoles)
 	}
@@ -173,7 +173,7 @@ func (am *authorizationMiddleware) FreezeDomain(ctx context.Context, session aut
 }
 
 func (am *authorizationMiddleware) ListDomains(ctx context.Context, session authn.Session, page domains.Page) (domains.DomainsPage, error) {
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 	params := map[string]any{
@@ -313,10 +313,13 @@ func (am *authorizationMiddleware) checkAdmin(ctx context.Context, session authn
 	return svcerr.ErrAuthorization
 }
 
-func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, userID string) error {
+func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, session authn.Session) error {
+	if session.Role != authn.AdminRole {
+		return svcerr.ErrSuperAdminAction
+	}
 	if err := am.authz.Authorize(ctx, smqauthz.PolicyReq{
 		SubjectType: policies.UserType,
-		Subject:     userID,
+		Subject:     session.UserID,
 		Permission:  policies.AdminPermission,
 		ObjectType:  policies.PlatformType,
 		Object:      policies.SuperMQObject,

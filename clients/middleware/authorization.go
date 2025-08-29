@@ -172,7 +172,7 @@ func (am *authorizationMiddleware) ListClients(ctx context.Context, session auth
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -200,7 +200,7 @@ func (am *authorizationMiddleware) ListUserClients(ctx context.Context, session 
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err != nil {
+	if err := am.checkSuperAdmin(ctx, session); err != nil {
 		return clients.ClientsPage{}, err
 	}
 	params := map[string]any{
@@ -551,10 +551,13 @@ func (am *authorizationMiddleware) extAuthorize(ctx context.Context, extOp svcut
 	return nil
 }
 
-func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, userID string) error {
+func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, session authn.Session) error {
+	if session.Role != authn.AdminRole {
+		return svcerr.ErrSuperAdminAction
+	}
 	if err := am.authz.Authorize(ctx, smqauthz.PolicyReq{
 		SubjectType: policies.UserType,
-		Subject:     userID,
+		Subject:     session.UserID,
 		Permission:  policies.AdminPermission,
 		ObjectType:  policies.PlatformType,
 		Object:      policies.SuperMQObject,

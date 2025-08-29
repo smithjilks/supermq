@@ -90,4 +90,7 @@ var (
 
 	// ErrRetainOneMember indicates that at least one owner must be retained in the entity.
 	ErrRetainOneMember = errors.New("must retain at least one member")
+
+	// ErrSuperAdminAction indicates that the user is not a super admin.
+	ErrSuperAdminAction = errors.New("not authorized to perform admin action")
 )

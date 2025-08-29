@@ -35,7 +35,7 @@ func AuthorizationMiddleware(svc users.Service, authz smqauthz.Authorization, se
 
 func (am *authorizationMiddleware) Register(ctx context.Context, session authn.Session, user users.User, selfRegister bool) (users.User, error) {
 	if selfRegister {
-		if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+		if err := am.checkSuperAdmin(ctx, session); err == nil {
 			session.SuperAdmin = true
 		}
 	}
@@ -56,7 +56,7 @@ func (am *authorizationMiddleware) View(ctx context.Context, session authn.Sessi
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -90,7 +90,7 @@ func (am *authorizationMiddleware) ListUsers(ctx context.Context, session authn.
 			return users.UsersPage{}, errors.Wrap(svcerr.ErrUnauthorizedPAT, err)
 		}
 	}
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -114,7 +114,7 @@ func (am *authorizationMiddleware) Update(ctx context.Context, session authn.Ses
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -134,7 +134,7 @@ func (am *authorizationMiddleware) UpdateTags(ctx context.Context, session authn
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -153,7 +153,7 @@ func (am *authorizationMiddleware) UpdateEmail(ctx context.Context, session auth
 			return users.User{}, errors.Wrap(svcerr.ErrUnauthorizedPAT, err)
 		}
 	}
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -173,7 +173,7 @@ func (am *authorizationMiddleware) UpdateUsername(ctx context.Context, session a
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -193,7 +193,7 @@ func (am *authorizationMiddleware) UpdateProfilePicture(ctx context.Context, ses
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -241,7 +241,7 @@ func (am *authorizationMiddleware) UpdateRole(ctx context.Context, session authn
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err != nil {
+	if err := am.checkSuperAdmin(ctx, session); err != nil {
 		return users.User{}, err
 	}
 	session.SuperAdmin = true
@@ -265,7 +265,7 @@ func (am *authorizationMiddleware) Enable(ctx context.Context, session authn.Ses
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -285,7 +285,7 @@ func (am *authorizationMiddleware) Disable(ctx context.Context, session authn.Se
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -305,7 +305,7 @@ func (am *authorizationMiddleware) Delete(ctx context.Context, session authn.Ses
 		}
 	}
 
-	if err := am.checkSuperAdmin(ctx, session.UserID); err == nil {
+	if err := am.checkSuperAdmin(ctx, session); err == nil {
 		session.SuperAdmin = true
 	}
 
@@ -335,10 +335,13 @@ func (am *authorizationMiddleware) OAuthAddUserPolicy(ctx context.Context, user 
 	return am.svc.OAuthAddUserPolicy(ctx, user)
 }
 
-func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, adminID string) error {
+func (am *authorizationMiddleware) checkSuperAdmin(ctx context.Context, session authn.Session) error {
+	if session.Role != authn.AdminRole {
+		return svcerr.ErrSuperAdminAction
+	}
 	if err := am.authz.Authorize(ctx, smqauthz.PolicyReq{
 		SubjectType: policies.UserType,
-		Subject:     adminID,
+		Subject:     session.UserID,
 		Permission:  policies.AdminPermission,
 		ObjectType:  policies.PlatformType,
 		Object:      policies.SuperMQObject,
