@@ -179,9 +179,8 @@ type Service interface {
 	// UpdateProfilePicture updates the user's profile picture.
 	UpdateProfilePicture(ctx context.Context, session authn.Session, id string, usr UserReq) (User, error)
 
-	// GenerateResetToken email where mail will be sent.
-	// host is used for generating reset link.
-	GenerateResetToken(ctx context.Context, email, host string) error
+	// SendPasswordReset generates reset password link and sends it to the user via email.
+	SendPasswordReset(ctx context.Context, email string) error
 
 	// UpdateSecret updates the user's secret.
 	UpdateSecret(ctx context.Context, session authn.Session, oldSecret, newSecret string) (User, error)
@@ -189,9 +188,6 @@ type Service interface {
 	// ResetSecret change users secret in reset flow.
 	// token can be authentication token or secret reset token.
 	ResetSecret(ctx context.Context, session authn.Session, secret string) error
-
-	// SendPasswordReset sends reset password link to email.
-	SendPasswordReset(ctx context.Context, host, email, user, token string) error
 
 	// UpdateRole updates the user's Role.
 	UpdateRole(ctx context.Context, session authn.Session, user User) (User, error)
