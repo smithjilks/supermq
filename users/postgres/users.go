@@ -119,11 +119,21 @@ func (repo *userRepo) RetrieveAll(ctx context.Context, pm users.Page) (users.Use
 
 	orderClause := ""
 	switch pm.Order {
-	case "first_name", "last_name", "username", "email", "created_at", "updated_at":
-		orderClause = fmt.Sprintf("ORDER BY u.%s", pm.Order)
-		if pm.Dir == api.AscDir || pm.Dir == api.DescDir {
-			orderClause = fmt.Sprintf("%s %s", orderClause, pm.Dir)
-		}
+	case "first_name":
+		orderClause = "ORDER BY u.first_name"
+	case "last_name":
+		orderClause = "ORDER BY u.last_name"
+	case "username":
+		orderClause = "ORDER BY u.username"
+	case "email":
+		orderClause = "ORDER BY u.email"
+	case "created_at":
+		orderClause = "ORDER BY u.created_at"
+	case "updated_at":
+		orderClause = "ORDER BY COALESCE(u.updated_at, u.created_at)"
+	}
+	if orderClause != "" && (pm.Dir == api.AscDir || pm.Dir == api.DescDir) {
+		orderClause = fmt.Sprintf("%s %s, u.id %s", orderClause, pm.Dir, pm.Dir)
 	}
 
 	q := fmt.Sprintf(`SELECT u.id, u.tags, u.email, u.metadata, u.status, u.role, u.first_name, u.last_name, u.username,

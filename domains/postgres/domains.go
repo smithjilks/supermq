@@ -521,14 +521,22 @@ func (repo domainRepo) processRows(rows *sqlx.Rows) ([]domains.Domain, error) {
 }
 
 func applyOrdering(emq string, pm domains.Page) string {
+	var orderBy string
 	switch pm.Order {
-	case "name", "created_at", "updated_at":
-		emq = fmt.Sprintf("%s ORDER BY d.%s", emq, pm.Order)
-		if pm.Dir == api.AscDir || pm.Dir == api.DescDir {
-			emq = fmt.Sprintf("%s %s", emq, pm.Dir)
-		}
+	case "name":
+		orderBy = "d.name"
+	case "created_at":
+		orderBy = "d.created_at"
+	case "updated_at":
+		orderBy = "COALESCE(d.updated_at, d.created_at)"
+	default:
+		return emq
 	}
-	return emq
+
+	if pm.Dir == api.AscDir || pm.Dir == api.DescDir {
+		return fmt.Sprintf("%s ORDER BY %s %s, d.id %s", emq, orderBy, pm.Dir, pm.Dir)
+	}
+	return fmt.Sprintf("%s ORDER BY %s", emq, orderBy)
 }
 
 type dbDomain struct {

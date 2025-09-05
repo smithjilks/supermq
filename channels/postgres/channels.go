@@ -1340,14 +1340,22 @@ func PageQuery(pm channels.Page) (string, error) {
 }
 
 func applyOrdering(emq string, pm channels.Page) string {
+	var orderBy string
 	switch pm.Order {
-	case "name", "created_at", "updated_at":
-		emq = fmt.Sprintf("%s ORDER BY %s", emq, pm.Order)
-		if pm.Dir == api.AscDir || pm.Dir == api.DescDir {
-			emq = fmt.Sprintf("%s %s", emq, pm.Dir)
-		}
+	case "name":
+		orderBy = "name"
+	case "created_at":
+		orderBy = "created_at"
+	case "updated_at":
+		orderBy = "COALESCE(updated_at, created_at)"
+	default:
+		return emq
 	}
-	return emq
+
+	if pm.Dir == api.AscDir || pm.Dir == api.DescDir {
+		return fmt.Sprintf("%s ORDER BY %s %s, id %s", emq, orderBy, pm.Dir, pm.Dir)
+	}
+	return fmt.Sprintf("%s ORDER BY %s", emq, orderBy)
 }
 
 func applyLimitOffset(query string) string {

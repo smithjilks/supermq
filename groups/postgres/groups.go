@@ -412,12 +412,22 @@ func (repo groupRepository) RetrieveAll(ctx context.Context, pm groups.PageMeta)
 	query := buildQuery(pm)
 
 	orderClause := ""
+	var orderBy string
 	switch pm.Order {
-	case "name", "created_at", "updated_at":
-		orderClause = fmt.Sprintf("ORDER BY g.%s", pm.Order)
-		if pm.Dir == api.AscDir || pm.Dir == api.DescDir {
-			orderClause = fmt.Sprintf("%s %s", orderClause, pm.Dir)
+	case "name":
+		orderBy = "g.name"
+	case "created_at":
+		orderBy = "g.created_at"
+	case "updated_at":
+		orderBy = "COALESCE(g.updated_at, g.created_at)"
+	}
+
+	if orderBy != "" {
+		dir := pm.Dir
+		if dir != api.AscDir && dir != api.DescDir {
+			dir = api.DescDir
 		}
+		orderClause = fmt.Sprintf("ORDER BY %s %s, g.id %s", orderBy, dir, dir)
 	}
 
 	q := fmt.Sprintf(`SELECT DISTINCT g.id, g.domain_id, tags, COALESCE(g.parent_id, '') AS parent_id, g.name, g.description,
