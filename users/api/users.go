@@ -28,13 +28,15 @@ import (
 var passRegex = regexp.MustCompile("^.{8,}$")
 
 // usersHandler returns a HTTP handler for API endpoints.
-func usersHandler(svc users.Service, authn smqauthn.Authentication, tokenClient grpcTokenV1.TokenServiceClient, selfRegister bool, r *chi.Mux, logger *slog.Logger, pr *regexp.Regexp, idp supermq.IDProvider, providers ...oauth2.Provider) *chi.Mux {
+func usersHandler(svc users.Service, authn smqauthn.AuthNMiddleware, tokenClient grpcTokenV1.TokenServiceClient, selfRegister bool, r *chi.Mux, logger *slog.Logger, pr *regexp.Regexp, idp supermq.IDProvider, providers ...oauth2.Provider) *chi.Mux {
 	passRegex = pr
 
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(apiutil.LoggingErrorEncoder(logger, api.EncodeError)),
 	}
 
+	// All endpoints in users service don't required Domain check
+	authn = authn.WithOptions(smqauthn.WithDomainCheck(false))
 	r.Route("/users", func(r chi.Router) {
 		r.Use(api.RequestIDMiddleware(idp))
 
@@ -47,16 +49,22 @@ func usersHandler(svc users.Service, authn smqauthn.Authentication, tokenClient 
 				opts...,
 			), "register_user").ServeHTTP)
 		default:
-			r.With(api.AuthenticateMiddleware(authn, false)).Post("/", otelhttp.NewHandler(kithttp.NewServer(
+			r.With(authn.Middleware()).Post("/", otelhttp.NewHandler(kithttp.NewServer(
 				registrationEndpoint(svc, selfRegister),
 				decodeCreateUserReq,
 				api.EncodeResponse,
 				opts...,
 			), "register_user").ServeHTTP)
 		}
-
+		// Endpoints which are allowed for unverified user
 		r.Group(func(r chi.Router) {
-			r.Use(api.AuthenticateMiddleware(authn, false))
+			r.Use(authn.WithOptions(smqauthn.WithAllowUnverifiedUser(true)).Middleware())
+			r.Post("/send-verification", otelhttp.NewHandler(kithttp.NewServer(
+				sendVerificationEndpoint(svc),
+				decodeSendVerification,
+				api.EncodeResponse,
+				opts...,
+			), "send_verification").ServeHTTP)
 
 			r.Get("/profile", otelhttp.NewHandler(kithttp.NewServer(
 				viewProfileEndpoint(svc),
@@ -64,6 +72,22 @@ func usersHandler(svc users.Service, authn smqauthn.Authentication, tokenClient 
 				api.EncodeResponse,
 				opts...,
 			), "view_profile").ServeHTTP)
+			r.Post("/tokens/refresh", otelhttp.NewHandler(kithttp.NewServer(
+				refreshTokenEndpoint(svc),
+				decodeRefreshToken,
+				api.EncodeResponse,
+				opts...,
+			), "refresh_token").ServeHTTP)
+			r.Patch("/{id}/email", otelhttp.NewHandler(kithttp.NewServer(
+				updateEmailEndpoint(svc),
+				decodeUpdateUserEmail,
+				api.EncodeResponse,
+				opts...,
+			), "update_user_email").ServeHTTP)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(authn.Middleware())
 
 			r.Get("/{id}", otelhttp.NewHandler(kithttp.NewServer(
 				viewEndpoint(svc),
@@ -121,13 +145,6 @@ func usersHandler(svc users.Service, authn smqauthn.Authentication, tokenClient 
 				opts...,
 			), "update_user_tags").ServeHTTP)
 
-			r.Patch("/{id}/email", otelhttp.NewHandler(kithttp.NewServer(
-				updateEmailEndpoint(svc),
-				decodeUpdateUserEmail,
-				api.EncodeResponse,
-				opts...,
-			), "update_user_email").ServeHTTP)
-
 			r.Patch("/{id}/role", otelhttp.NewHandler(kithttp.NewServer(
 				updateRoleEndpoint(svc),
 				decodeUpdateUserRole,
@@ -155,18 +172,11 @@ func usersHandler(svc users.Service, authn smqauthn.Authentication, tokenClient 
 				api.EncodeResponse,
 				opts...,
 			), "delete_user").ServeHTTP)
-
-			r.Post("/tokens/refresh", otelhttp.NewHandler(kithttp.NewServer(
-				refreshTokenEndpoint(svc),
-				decodeRefreshToken,
-				api.EncodeResponse,
-				opts...,
-			), "refresh_token").ServeHTTP)
 		})
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(api.AuthenticateMiddleware(authn, false))
+		r.Use(authn.Middleware())
 		r.Put("/password/reset", otelhttp.NewHandler(kithttp.NewServer(
 			passwordResetEndpoint(svc),
 			decodePasswordReset,
@@ -189,11 +199,34 @@ func usersHandler(svc users.Service, authn smqauthn.Authentication, tokenClient 
 		opts...,
 	), "password_reset_req").ServeHTTP)
 
+	r.Get("/verify-email", otelhttp.NewHandler(kithttp.NewServer(
+		verifyEmailEndpoint(svc),
+		decodeVerifyEmail,
+		api.EncodeResponse,
+		opts...,
+	), "verify_email").ServeHTTP)
+
 	for _, provider := range providers {
 		r.HandleFunc("/oauth/callback/"+provider.Name(), oauth2CallbackHandler(provider, svc, tokenClient))
 	}
 
 	return r
+}
+
+func decodeSendVerification(_ context.Context, r *http.Request) (any, error) {
+	req := sendVerificationReq{}
+	return req, nil
+}
+
+func decodeVerifyEmail(_ context.Context, r *http.Request) (any, error) {
+	token, err := apiutil.ReadStringQuery(r, api.TokenKey, "")
+	if err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
+
+	return verifyEmailReq{
+		token: token,
+	}, nil
 }
 
 func decodeViewUser(_ context.Context, r *http.Request) (any, error) {

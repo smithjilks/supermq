@@ -43,7 +43,8 @@ func setupChannels() (*httptest.Server, *chmocks.Service, *authnmocks.Authentica
 	authn := new(authnmocks.Authentication)
 	mux := chi.NewRouter()
 	idp := uuid.NewMock()
-	chapi.MakeHandler(svc, authn, mux, logger, "", idp)
+	am := smqauthn.NewAuthNMiddleware(authn, smqauthn.WithAllowUnverifiedUser(true))
+	chapi.MakeHandler(svc, am, mux, logger, "", idp)
 
 	return httptest.NewServer(mux), svc, authn
 }
@@ -1094,7 +1095,7 @@ func TestUpdateChannelTags(t *testing.T) {
 			svcRes:           channels.Channel{},
 			authenticateErr:  svcerr.ErrAuthorization,
 			response:         sdk.Channel{},
-			err:              errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:              errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:             "update channel tags with empty token",

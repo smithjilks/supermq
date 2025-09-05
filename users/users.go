@@ -29,6 +29,7 @@ type User struct {
 	CreatedAt      time.Time   `json:"created_at,omitempty"`
 	UpdatedAt      time.Time   `json:"updated_at,omitempty"`
 	UpdatedBy      string      `json:"updated_by,omitempty"`
+	VerifiedAt     time.Time   `json:"verified_at,omitempty"`
 }
 
 type Credentials struct {
@@ -49,9 +50,7 @@ type UserReq struct {
 	LastName       *string    `json:"last_name,omitempty"`
 	Metadata       *Metadata  `json:"metadata,omitempty"`
 	Tags           *[]string  `json:"tags,omitempty"`
-	Role           *Role      `json:"role,omitempty"`
 	ProfilePicture *string    `json:"profile_picture,omitempty"`
-	Email          *string    `json:"email,omitempty"`
 	UpdatedBy      *string    `json:"updated_by,omitempty"`
 	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
 }
@@ -90,6 +89,15 @@ type Repository interface {
 	// UpdateSecret updates secret for user with given email.
 	UpdateSecret(ctx context.Context, user User) (User, error)
 
+	// UpdateEmail updates email for user with given id.
+	UpdateEmail(ctx context.Context, user User) (User, error)
+
+	// UpdateRole updates role for user with given id.
+	UpdateRole(ctx context.Context, user User) (User, error)
+
+	// UpdateVerifiedAt updates the verified time for user with given id.
+	UpdateVerifiedAt(ctx context.Context, user User) (User, error)
+
 	// ChangeStatus changes user status to enabled or disabled
 	ChangeStatus(ctx context.Context, user User) (User, error)
 
@@ -107,6 +115,15 @@ type Repository interface {
 	// Save persists the user account. A non-nil error is returned to indicate
 	// operation failure.
 	Save(ctx context.Context, user User) (User, error)
+
+	// AddUserVerification adds new verification for given user id and email
+	AddUserVerification(ctx context.Context, uv UserVerification) error
+
+	// RetrieveVerificationToken retrieves verification token of given user id and email.
+	RetrieveUserVerification(ctx context.Context, userID, email string) (UserVerification, error)
+
+	// UpdateUserVerificationDetails update verification details for the given user id and email.
+	UpdateUserVerification(ctx context.Context, uv UserVerification) error
 }
 
 // Validate returns an error if user representation is invalid.
@@ -143,6 +160,7 @@ type Page struct {
 	FirstName  string   `json:"first_name,omitempty"`
 	LastName   string   `json:"last_name,omitempty"`
 	Email      string   `json:"email,omitempty"`
+	Verified   bool     `json:"verified,omitempty"`
 }
 
 // Service specifies an API that must be fullfiled by the domain service
@@ -151,6 +169,12 @@ type Service interface {
 	// Register creates new user. In case of the failed registration, a
 	// non-nil error value is returned.
 	Register(ctx context.Context, session authn.Session, user User, selfRegister bool) (User, error)
+
+	// SendVerification sends a verification email to the user.
+	SendVerification(ctx context.Context, session authn.Session) error
+
+	// VerifyEmail verifies user's email using the verification token.
+	VerifyEmail(ctx context.Context, verificationToken string) (User, error)
 
 	// View retrieves user info for a given user ID and an authorized token.
 	View(ctx context.Context, session authn.Session, id string) (User, error)

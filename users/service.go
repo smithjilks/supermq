@@ -5,6 +5,7 @@ package users
 
 import (
 	"context"
+	"fmt"
 	"net/mail"
 	"time"
 
@@ -92,6 +93,85 @@ func (svc service) Register(ctx context.Context, session authn.Session, u User, 
 	return user, nil
 }
 
+func (svc service) SendVerification(ctx context.Context, session authn.Session) error {
+	dbUser, err := svc.users.RetrieveByID(ctx, session.UserID)
+	if err != nil {
+		return err
+	}
+
+	if !dbUser.VerifiedAt.IsZero() {
+		return svcerr.ErrUserAlreadyVerified
+	}
+
+	uv, err := svc.users.RetrieveUserVerification(ctx, dbUser.ID, dbUser.Email)
+	if err != nil && err != repoerr.ErrNotFound {
+		return err
+	}
+
+	if err = uv.Valid(); err != nil {
+		uv, err = NewUserVerification(dbUser.ID, dbUser.Email)
+		if err != nil {
+			return errors.Wrap(svcerr.ErrCreateEntity, err)
+		}
+		if err := svc.users.AddUserVerification(ctx, uv); err != nil {
+			return errors.Wrap(svcerr.ErrCreateEntity, err)
+		}
+	}
+
+	uvs, err := uv.Encode()
+	if err != nil {
+		return errors.Wrap(svcerr.ErrCreateEntity, err)
+	}
+
+	if err := svc.email.SendVerification([]string{dbUser.Email}, dbUser.Credentials.Username, uvs); err != nil {
+		return errors.Wrap(svcerr.ErrCreateEntity, err)
+	}
+	return nil
+}
+
+func (svc service) VerifyEmail(ctx context.Context, token string) (User, error) {
+	var received UserVerification
+	if err := received.Decode(token); err != nil {
+		return User{}, errors.Wrap(svcerr.ErrInvalidUserVerification, err)
+	}
+
+	stored, err := svc.users.RetrieveUserVerification(ctx, received.UserID, received.Email)
+	if err != nil {
+		return User{}, errors.Wrap(svcerr.ErrViewEntity, err)
+	}
+
+	if err := stored.Match(received); err != nil {
+		return User{}, err
+	}
+
+	if err := stored.Valid(); err != nil {
+		if err == svcerr.ErrUserVerificationExpired {
+			return User{}, err
+		}
+		return User{}, errors.Wrap(svcerr.ErrMalformedEntity, err)
+	}
+
+	stored.UsedAt = time.Now().UTC()
+	if err = svc.users.UpdateUserVerification(ctx, stored); err != nil {
+		return User{}, errors.Wrap(svcerr.ErrUpdateEntity, err)
+	}
+
+	user := User{
+		ID:         stored.UserID,
+		Email:      stored.Email,
+		VerifiedAt: time.Now().UTC(),
+	}
+	user, err = svc.users.UpdateVerifiedAt(ctx, user)
+	if err == repoerr.ErrNotFound {
+		return User{}, svcerr.ErrInvalidUserVerification
+	}
+	if err != nil {
+		return User{}, errors.Wrap(svcerr.ErrUpdateEntity, err)
+	}
+
+	return user, nil
+}
+
 func (svc service) IssueToken(ctx context.Context, identity, secret string) (*grpcTokenV1.Token, error) {
 	var dbUser User
 	var err error
@@ -110,7 +190,7 @@ func (svc service) IssueToken(ctx context.Context, identity, secret string) (*gr
 		return &grpcTokenV1.Token{}, errors.Wrap(svcerr.ErrLogin, err)
 	}
 
-	token, err := svc.token.Issue(ctx, &grpcTokenV1.IssueReq{UserId: dbUser.ID, UserRole: uint32(dbUser.Role + 1), Type: uint32(smqauth.AccessKey)})
+	token, err := svc.token.Issue(ctx, &grpcTokenV1.IssueReq{UserId: dbUser.ID, UserRole: uint32(dbUser.Role + 1), Type: uint32(smqauth.AccessKey), Verified: !dbUser.VerifiedAt.IsZero()})
 	if err != nil {
 		return &grpcTokenV1.Token{}, errors.Wrap(errIssueToken, err)
 	}
@@ -127,7 +207,7 @@ func (svc service) RefreshToken(ctx context.Context, session authn.Session, refr
 		return &grpcTokenV1.Token{}, errors.Wrap(svcerr.ErrAuthentication, errLoginDisableUser)
 	}
 
-	return svc.token.Refresh(ctx, &grpcTokenV1.RefreshReq{RefreshToken: refreshToken})
+	return svc.token.Refresh(ctx, &grpcTokenV1.RefreshReq{RefreshToken: refreshToken, Verified: !dbUser.VerifiedAt.IsZero()})
 }
 
 func (svc service) View(ctx context.Context, session authn.Session, id string) (User, error) {
@@ -255,14 +335,23 @@ func (svc service) UpdateEmail(ctx context.Context, session authn.Session, userI
 			return User{}, err
 		}
 	}
-
-	updatedAt := time.Now().UTC()
-	usr := UserReq{
-		Email:     &email,
-		UpdatedAt: &updatedAt,
-		UpdatedBy: &session.UserID,
+	oldUsr, err := svc.users.RetrieveByID(ctx, userID)
+	if err != nil {
+		return User{}, errors.Wrap(svcerr.ErrUpdateEntity, err)
 	}
-	user, err := svc.users.Update(ctx, userID, usr)
+	if oldUsr.Email == email {
+		return User{}, fmt.Errorf("current email is same as update requested email")
+	}
+
+	usr := User{
+		ID:         userID,
+		Email:      email,
+		UpdatedAt:  time.Now().UTC(),
+		UpdatedBy:  session.UserID,
+		VerifiedAt: time.Time{},
+	}
+
+	user, err := svc.users.UpdateEmail(ctx, usr)
 	if err != nil {
 		return User{}, errors.Wrap(svcerr.ErrUpdateEntity, err)
 	}
@@ -362,18 +451,18 @@ func (svc service) UpdateRole(ctx context.Context, session authn.Session, usr Us
 	if err := svc.checkSuperAdmin(ctx, session); err != nil {
 		return User{}, err
 	}
-	updateAt := time.Now().UTC()
-	uReq := UserReq{
-		Role:      &usr.Role,
-		UpdatedAt: &updateAt,
-		UpdatedBy: &session.UserID,
+	usr = User{
+		ID:        usr.ID,
+		Role:      usr.Role,
+		UpdatedAt: time.Now().UTC(),
+		UpdatedBy: session.UserID,
 	}
 
 	if err := svc.updateUserPolicy(ctx, usr.ID, usr.Role); err != nil {
 		return User{}, err
 	}
 
-	u, err := svc.users.Update(ctx, usr.ID, uReq)
+	u, err := svc.users.UpdateRole(ctx, usr)
 	if err != nil {
 		// If failed to update role in DB, then revert back to platform admin policies in spicedb
 		if errRollback := svc.updateUserPolicy(ctx, usr.ID, UserRole); errRollback != nil {

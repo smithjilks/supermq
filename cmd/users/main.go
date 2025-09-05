@@ -20,6 +20,7 @@ import (
 	grpcTokenV1 "github.com/absmach/supermq/api/grpc/token/v1"
 	"github.com/absmach/supermq/internal/email"
 	smqlog "github.com/absmach/supermq/logger"
+	smqauthn "github.com/absmach/supermq/pkg/authn"
 	authsvcAuthn "github.com/absmach/supermq/pkg/authn/authsvc"
 	smqauthz "github.com/absmach/supermq/pkg/authz"
 	authsvcAuthz "github.com/absmach/supermq/pkg/authz/authsvc"
@@ -67,28 +68,31 @@ const (
 )
 
 type config struct {
-	LogLevel               string        `env:"SMQ_USERS_LOG_LEVEL"           envDefault:"info"`
-	AdminEmail             string        `env:"SMQ_USERS_ADMIN_EMAIL"         envDefault:"admin@example.com"`
-	AdminPassword          string        `env:"SMQ_USERS_ADMIN_PASSWORD"      envDefault:"12345678"`
-	AdminUsername          string        `env:"SMQ_USERS_ADMIN_USERNAME"      envDefault:"admin"`
-	AdminFirstName         string        `env:"SMQ_USERS_ADMIN_FIRST_NAME"    envDefault:"super"`
-	AdminLastName          string        `env:"SMQ_USERS_ADMIN_LAST_NAME"     envDefault:"admin"`
-	PassRegexText          string        `env:"SMQ_USERS_PASS_REGEX"          envDefault:"^.{8,}$"`
-	JaegerURL              url.URL       `env:"SMQ_JAEGER_URL"                envDefault:"http://localhost:4318/v1/traces"`
-	SendTelemetry          bool          `env:"SMQ_SEND_TELEMETRY"            envDefault:"true"`
-	InstanceID             string        `env:"SMQ_USERS_INSTANCE_ID"         envDefault:""`
-	ESURL                  string        `env:"SMQ_ES_URL"                    envDefault:"nats://localhost:4222"`
-	TraceRatio             float64       `env:"SMQ_JAEGER_TRACE_RATIO"        envDefault:"1.0"`
-	SelfRegister           bool          `env:"SMQ_USERS_ALLOW_SELF_REGISTER" envDefault:"false"`
-	OAuthUIRedirectURL     string        `env:"SMQ_OAUTH_UI_REDIRECT_URL"     envDefault:"http://localhost:9095/domains"`
-	OAuthUIErrorURL        string        `env:"SMQ_OAUTH_UI_ERROR_URL"        envDefault:"http://localhost:9095/error"`
-	DeleteInterval         time.Duration `env:"SMQ_USERS_DELETE_INTERVAL"     envDefault:"24h"`
-	DeleteAfter            time.Duration `env:"SMQ_USERS_DELETE_AFTER"        envDefault:"720h"`
-	SpicedbHost            string        `env:"SMQ_SPICEDB_HOST"              envDefault:"localhost"`
-	SpicedbPort            string        `env:"SMQ_SPICEDB_PORT"              envDefault:"50051"`
-	SpicedbPreSharedKey    string        `env:"SMQ_SPICEDB_PRE_SHARED_KEY"    envDefault:"12345678"`
-	PasswordResetURLPrefix string        `env:"SMQ_PASSWORD_RESET_URL_PREFIX" envDefault:"http://localhost:8080"`
-	PassRegex              *regexp.Regexp
+	LogLevel                   string        `env:"SMQ_USERS_LOG_LEVEL"                   envDefault:"info"`
+	AdminEmail                 string        `env:"SMQ_USERS_ADMIN_EMAIL"                 envDefault:"admin@example.com"`
+	AdminPassword              string        `env:"SMQ_USERS_ADMIN_PASSWORD"              envDefault:"12345678"`
+	AdminUsername              string        `env:"SMQ_USERS_ADMIN_USERNAME"              envDefault:"admin"`
+	AdminFirstName             string        `env:"SMQ_USERS_ADMIN_FIRST_NAME"            envDefault:"super"`
+	AdminLastName              string        `env:"SMQ_USERS_ADMIN_LAST_NAME"             envDefault:"admin"`
+	PassRegexText              string        `env:"SMQ_USERS_PASS_REGEX"                  envDefault:"^.{8,}$"`
+	JaegerURL                  url.URL       `env:"SMQ_JAEGER_URL"                        envDefault:"http://localhost:4318/v1/traces"`
+	SendTelemetry              bool          `env:"SMQ_SEND_TELEMETRY"                    envDefault:"true"`
+	InstanceID                 string        `env:"SMQ_USERS_INSTANCE_ID"                 envDefault:""`
+	ESURL                      string        `env:"SMQ_ES_URL"                            envDefault:"nats://localhost:4222"`
+	TraceRatio                 float64       `env:"SMQ_JAEGER_TRACE_RATIO"                envDefault:"1.0"`
+	SelfRegister               bool          `env:"SMQ_USERS_ALLOW_SELF_REGISTER"         envDefault:"false"`
+	OAuthUIRedirectURL         string        `env:"SMQ_OAUTH_UI_REDIRECT_URL"             envDefault:"http://localhost:9095/domains"`
+	OAuthUIErrorURL            string        `env:"SMQ_OAUTH_UI_ERROR_URL"                envDefault:"http://localhost:9095/error"`
+	DeleteInterval             time.Duration `env:"SMQ_USERS_DELETE_INTERVAL"             envDefault:"24h"`
+	DeleteAfter                time.Duration `env:"SMQ_USERS_DELETE_AFTER"                envDefault:"720h"`
+	SpicedbHost                string        `env:"SMQ_SPICEDB_HOST"                      envDefault:"localhost"`
+	SpicedbPort                string        `env:"SMQ_SPICEDB_PORT"                      envDefault:"50051"`
+	SpicedbPreSharedKey        string        `env:"SMQ_SPICEDB_PRE_SHARED_KEY"            envDefault:"12345678"`
+	PasswordResetURLPrefix     string        `env:"SMQ_PASSWORD_RESET_URL_PREFIX"         envDefault:"http://localhost/password/reset"`
+	PasswordResetEmailTemplate string        `env:"SMQ_PASSWORD_RESET_EMAIL_TEMPLATE"     envDefault:"reset-password-email.tmpl"`
+	VerificationURLPrefix      string        `env:"SMQ_VERIFICATION_URL_PREFIX"           envDefault:"http://localhost/verify-email"`
+	VerificationEmailTemplate  string        `env:"SMQ_VERIFICATION_EMAIL_TEMPLATE"       envDefault:"verification-email.tmpl"`
+	PassRegex                  *regexp.Regexp
 }
 
 func main() {
@@ -121,12 +125,21 @@ func main() {
 		}
 	}
 
-	ec := email.Config{}
-	if err := env.Parse(&ec); err != nil {
-		logger.Error(fmt.Sprintf("failed to load email configuration : %s", err.Error()))
+	resetPasswordEmailConfig := email.Config{}
+	if err := env.Parse(&resetPasswordEmailConfig); err != nil {
+		logger.Error(fmt.Sprintf("failed to load reset password email configuration : %s", err.Error()))
 		exitCode = 1
 		return
 	}
+	resetPasswordEmailConfig.Template = cfg.PasswordResetEmailTemplate
+
+	verificationEmailConfig := email.Config{}
+	if err := env.Parse(&verificationEmailConfig); err != nil {
+		logger.Error(fmt.Sprintf("failed to load verification password email configuration : %s", err.Error()))
+		exitCode = 1
+		return
+	}
+	verificationEmailConfig.Template = cfg.VerificationEmailTemplate
 
 	dbConfig := pgclient.Config{Name: defDB}
 	if err := env.ParseWithOptions(&dbConfig, env.Options{Prefix: envPrefixDB}); err != nil {
@@ -182,6 +195,8 @@ func main() {
 	defer authnHandler.Close()
 	logger.Info("AuthN successfully connected to auth gRPC server " + authnHandler.Secure())
 
+	authnMiddleware := smqauthn.NewAuthNMiddleware(authn)
+
 	domsGrpcCfg := grpcclient.Config{}
 	if err := env.ParseWithOptions(&domsGrpcCfg, env.Options{Prefix: envPrefixDomains}); err != nil {
 		logger.Error(fmt.Sprintf("failed to load domains gRPC client configuration : %s", err))
@@ -213,7 +228,7 @@ func main() {
 	}
 	logger.Info("Policy client successfully connected to spicedb gRPC server")
 
-	csvc, err := newService(ctx, authz, tokenClient, policyService, domainsClient, db, dbConfig, tracer, cfg, ec, logger)
+	csvc, err := newService(ctx, authz, tokenClient, policyService, domainsClient, db, dbConfig, tracer, cfg, resetPasswordEmailConfig, verificationEmailConfig, logger)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to setup service: %s", err))
 		exitCode = 1
@@ -237,7 +252,7 @@ func main() {
 
 	mux := chi.NewRouter()
 	idp := uuid.New()
-	httpSrv := httpserver.NewServer(ctx, cancel, svcName, httpServerConfig, httpapi.MakeHandler(csvc, authn, tokenClient, cfg.SelfRegister, mux, logger, cfg.InstanceID, cfg.PassRegex, idp, oauthProvider), logger)
+	httpSrv := httpserver.NewServer(ctx, cancel, svcName, httpServerConfig, httpapi.MakeHandler(csvc, authnMiddleware, tokenClient, cfg.SelfRegister, mux, logger, cfg.InstanceID, cfg.PassRegex, idp, oauthProvider), logger)
 
 	if cfg.SendTelemetry {
 		chc := chclient.New(svcName, supermq.Version, logger, cancel)
@@ -257,16 +272,23 @@ func main() {
 	}
 }
 
-func newService(ctx context.Context, authz smqauthz.Authorization, token grpcTokenV1.TokenServiceClient, policyService policies.Service, domainsClient grpcDomainsV1.DomainsServiceClient, db *sqlx.DB, dbConfig pgclient.Config, tracer trace.Tracer, c config, ec email.Config, logger *slog.Logger) (users.Service, error) {
+func newService(ctx context.Context, authz smqauthz.Authorization, token grpcTokenV1.TokenServiceClient, policyService policies.Service, domainsClient grpcDomainsV1.DomainsServiceClient, db *sqlx.DB, dbConfig pgclient.Config, tracer trace.Tracer, c config, resetPasswordEmailConfig, verificationEmailConfig email.Config, logger *slog.Logger) (users.Service, error) {
 	database := pg.NewDatabase(db, dbConfig, tracer)
 	idp := uuid.New()
 	hsr := hasher.New()
 
 	// Creating users service
 	repo := postgres.NewRepository(database)
-	emailerClient, err := emailer.New(fmt.Sprintf("%s/reset-request", c.PasswordResetURLPrefix), &ec)
+
+	emailerClient, err := emailer.New(
+		c.PasswordResetURLPrefix,
+		c.VerificationURLPrefix,
+		&resetPasswordEmailConfig,
+		&verificationEmailConfig,
+	)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to configure e-mailing util: %s", err.Error()))
+		return nil, err
 	}
 
 	svc := users.NewService(token, repo, policyService, emailerClient, hsr, idp)

@@ -37,7 +37,8 @@ func setupClients() (*httptest.Server, *mocks.Service, *authnmocks.Authenticatio
 	mux := chi.NewRouter()
 	idp := uuid.NewMock()
 	authn := new(authnmocks.Authentication)
-	api.MakeHandler(tsvc, authn, mux, logger, "", idp)
+	am := smqauthn.NewAuthNMiddleware(authn, smqauthn.WithAllowUnverifiedUser(true))
+	api.MakeHandler(tsvc, am, mux, logger, "", idp)
 
 	return httptest.NewServer(mux), tsvc, authn
 }
@@ -647,7 +648,7 @@ func TestViewClient(t *testing.T) {
 			svcRes:          clients.Client{},
 			authenticateErr: svcerr.ErrAuthorization,
 			response:        sdk.Client{},
-			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:      "view client with empty token",
@@ -786,7 +787,7 @@ func TestUpdateClient(t *testing.T) {
 			svcRes:          clients.Client{},
 			authenticateErr: svcerr.ErrAuthorization,
 			response:        sdk.Client{},
-			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:            "update client with empty token",
@@ -940,7 +941,7 @@ func TestUpdateClientTags(t *testing.T) {
 			svcRes:          clients.Client{},
 			authenticateErr: svcerr.ErrAuthorization,
 			response:        sdk.Client{},
-			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:            "update client tags with empty token",
@@ -1089,7 +1090,7 @@ func TestUpdateClientSecret(t *testing.T) {
 			svcRes:          clients.Client{},
 			authenticateErr: svcerr.ErrAuthorization,
 			response:        sdk.Client{},
-			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:      "update client secret with empty token",
@@ -1217,7 +1218,7 @@ func TestEnableClient(t *testing.T) {
 			svcRes:          clients.Client{},
 			authenticateErr: svcerr.ErrAuthorization,
 			response:        sdk.Client{},
-			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:     "enable client with an invalid client id",
@@ -1320,7 +1321,7 @@ func TestDisableClient(t *testing.T) {
 			svcRes:          clients.Client{},
 			authenticateErr: svcerr.ErrAuthorization,
 			response:        sdk.Client{},
-			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:     "disable client with an invalid client id",
@@ -1415,7 +1416,7 @@ func TestDeleteClient(t *testing.T) {
 			token:           invalidToken,
 			clientID:        client.ID,
 			authenticateErr: svcerr.ErrAuthorization,
-			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusForbidden),
+			err:             errors.NewSDKErrorWithStatus(svcerr.ErrAuthorization, http.StatusUnauthorized),
 		},
 		{
 			desc:     "delete client with empty token",
