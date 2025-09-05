@@ -263,8 +263,8 @@ type Repository interface {
 	// UpdateRejection updates an invitation by setting the rejection time.
 	UpdateRejection(ctx context.Context, invitation Invitation) (err error)
 
-	// Delete deletes an invitation.
-	DeleteInvitation(ctx context.Context, userID, domainID string) (err error)
+	// DeleteUsersInvitations deletes invitation to a provided domain for users with provided user IDs.
+	DeleteUsersInvitations(ctx context.Context, domainID string, userID ...string) (err error)
 
 	roles.Repository
 }
