@@ -47,6 +47,14 @@ func MakeHandler(logger *slog.Logger, instanceID string) http.Handler {
 		api.EncodeResponse,
 		opts...,
 	), "publish").ServeHTTP)
+
+	r.Post("/hc/{domain}", otelhttp.NewHandler(kithttp.NewServer(
+		healthCheckEndpoint(),
+		decodeHealthCheckRequest,
+		api.EncodeResponse,
+		opts...,
+	), "health_check").ServeHTTP)
+
 	r.Get("/health", supermq.Health("http", instanceID))
 	r.Handle("/metrics", promhttp.Handler())
 
@@ -75,6 +83,24 @@ func decodeRequest(_ context.Context, r *http.Request) (any, error) {
 	defer r.Body.Close()
 
 	req.msg = &messaging.Message{Payload: payload}
+
+	return req, nil
+}
+
+func decodeHealthCheckRequest(_ context.Context, r *http.Request) (any, error) {
+	var req healthCheckReq
+	req.domain = chi.URLParam(r, "domain")
+	_, pass, ok := r.BasicAuth()
+	switch {
+	case ok:
+		req.token = pass
+	case !ok:
+		req.token = r.Header.Get(authzHeaderKey)
+	}
+
+	if err := req.validate(); err != nil {
+		return nil, errors.Wrap(apiutil.ErrValidation, err)
+	}
 
 	return req, nil
 }

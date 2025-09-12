@@ -23,3 +23,19 @@ func (req publishReq) validate() error {
 
 	return nil
 }
+
+type healthCheckReq struct {
+	domain string
+	token  string
+}
+
+func (req healthCheckReq) validate() error {
+	if req.token == "" {
+		return apiutil.ErrBearerKey
+	}
+	if req.domain == "" {
+		return apiutil.ErrMissingDomainID
+	}
+
+	return nil
+}

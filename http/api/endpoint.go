@@ -21,3 +21,14 @@ func sendMessageEndpoint() endpoint.Endpoint {
 		return publishMessageRes{}, nil
 	}
 }
+
+func healthCheckEndpoint() endpoint.Endpoint {
+	return func(ctx context.Context, request any) (any, error) {
+		req := request.(healthCheckReq)
+		if err := req.validate(); err != nil {
+			return nil, errors.Wrap(apiutil.ErrValidation, err)
+		}
+
+		return healthCheckRes{}, nil
+	}
+}

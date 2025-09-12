@@ -345,3 +345,124 @@ func TestPublish(t *testing.T) {
 		})
 	}
 }
+
+func TestHealthCheck(t *testing.T) {
+	clients := new(climocks.ClientsServiceClient)
+	authn := new(authnMocks.Authentication)
+	channels := new(chmocks.ChannelsServiceClient)
+	domains := new(dmocks.DomainsServiceClient)
+	clientKey := "client_key"
+	invalidKey := invalidValue
+	validToken := "token"
+	invalidToken := "invalid_token"
+	svc, _, err := newService(authn, clients, channels, domains)
+	assert.Nil(t, err, fmt.Sprintf("failed to create service with err: %v", err))
+	target := newTargetHTTPServer()
+	defer target.Close()
+	ts, err := newProxyHTPPServer(svc, target)
+	assert.Nil(t, err, fmt.Sprintf("failed to create proxy server with err: %v", err))
+
+	defer ts.Close()
+
+	cases := []struct {
+		desc        string
+		domainID    string
+		clientID    string
+		clientType  string
+		key         string
+		status      int
+		basicAuth   bool
+		bearerToken bool
+		authnErr    error
+		authnRes    *grpcClientsV1.AuthnRes
+		authnRes1   smqauthn.Session
+	}{
+		{
+			desc:     "health check successfully",
+			domainID: domainID,
+			key:      clientKey,
+			status:   http.StatusOK,
+			authnRes: &grpcClientsV1.AuthnRes{Id: clientID, Authenticated: true},
+		},
+		{
+			desc:      "health check with basic auth",
+			domainID:  domainID,
+			key:       clientKey,
+			basicAuth: true,
+			status:    http.StatusOK,
+			authnRes:  &grpcClientsV1.AuthnRes{Id: clientID, Authenticated: true},
+		},
+		{
+			desc:     "health check with invalid key",
+			domainID: domainID,
+			key:      invalidKey,
+			status:   http.StatusUnauthorized,
+			authnRes: &grpcClientsV1.AuthnRes{Authenticated: false},
+		},
+		{
+			desc:      "health check with invalid basic auth",
+			domainID:  domainID,
+			key:       invalidKey,
+			basicAuth: true,
+			status:    http.StatusUnauthorized,
+			authnRes:  &grpcClientsV1.AuthnRes{Authenticated: false},
+		},
+		{
+			desc:        "health check with valid bearer token",
+			domainID:    domainID,
+			key:         validToken,
+			bearerToken: true,
+			status:      http.StatusOK,
+			authnRes1:   smqauthn.Session{UserID: userID},
+		},
+		{
+			desc:        "health check with invalid bearer token",
+			domainID:    domainID,
+			key:         invalidToken,
+			bearerToken: true,
+			status:      http.StatusUnauthorized,
+			authnRes1:   smqauthn.Session{},
+			authnErr:    svcerr.ErrAuthentication,
+		},
+		{
+			desc:     "health check with empty key",
+			domainID: domainID,
+			key:      "",
+			status:   http.StatusBadRequest,
+		},
+		{
+			desc:     "health check with empty domain ID",
+			domainID: "",
+			key:      clientKey,
+			status:   http.StatusBadRequest,
+		},
+		{
+			desc:     "health check with invalid domain ID",
+			domainID: invalidValue,
+			key:      clientKey,
+			status:   http.StatusUnauthorized,
+			authnRes: &grpcClientsV1.AuthnRes{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			clientsCall := clients.On("Authenticate", mock.Anything, &grpcClientsV1.AuthnReq{Token: smqauthn.AuthPack(smqauthn.DomainAuth, tc.domainID, tc.key)}).Return(tc.authnRes, tc.authnErr)
+			authCall := authn.On("Authenticate", mock.Anything, tc.key).Return(tc.authnRes1, tc.authnErr)
+			domainsCall := domains.On("RetrieveIDByRoute", mock.Anything, mock.Anything).Return(&grpcCommonV1.RetrieveEntityRes{Entity: &grpcCommonV1.EntityBasic{Id: tc.domainID}}, nil)
+			req := testRequest{
+				client:      ts.Client(),
+				method:      http.MethodPost,
+				url:         fmt.Sprintf("%s/hc/%s", ts.URL, tc.domainID),
+				token:       tc.key,
+				basicAuth:   tc.basicAuth,
+				bearerToken: tc.bearerToken,
+			}
+			res, err := req.make()
+			assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
+			assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
+			clientsCall.Unset()
+			authCall.Unset()
+			domainsCall.Unset()
+		})
+	}
+}

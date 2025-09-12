@@ -32,24 +32,24 @@ import (
 )
 
 const (
-	clientID              = "513d02d2-16c1-4f23-98be-9e12f8fee898"
-	clientID1             = "513d02d2-16c1-4f23-98be-9e12f8fee899"
-	clientKey             = "password"
-	chanID                = "123e4567-e89b-12d3-a456-000000000001"
-	invalidID             = "invalidID"
-	invalidValue          = "invalidValue"
-	invalidChannelIDTopic = "m/**/c"
+	clientID     = "513d02d2-16c1-4f23-98be-9e12f8fee898"
+	clientKey    = "password"
+	chanID       = "123e4567-e89b-12d3-a456-000000000001"
+	invalidValue = "invalidValue"
 )
 
 var (
-	domainID      = testsutil.GenerateUUID(&testing.T{})
-	topicMsg      = "/m/%s/c/%s"
-	subtopicMsg   = "/m/%s/c/%s/subtopic"
-	topic         = fmt.Sprintf(topicMsg, domainID, chanID)
-	subtopic      = fmt.Sprintf(subtopicMsg, domainID, chanID)
-	invalidTopic  = invalidValue
-	payload       = []byte("[{'n':'test-name', 'v': 1.2}]")
-	sessionClient = session.Session{
+	domainID       = testsutil.GenerateUUID(&testing.T{})
+	topicMsg       = "/m/%s/c/%s"
+	subtopicMsg    = "/m/%s/c/%s/subtopic"
+	hcTopicFmt     = "/hc/%s"
+	hcTopic        = fmt.Sprintf(hcTopicFmt, domainID)
+	topic          = fmt.Sprintf(topicMsg, domainID, chanID)
+	subtopic       = fmt.Sprintf(subtopicMsg, domainID, chanID)
+	invalidTopic   = invalidValue
+	invalidHCTopic = "/hc"
+	payload        = []byte("[{'n':'test-name', 'v': 1.2}]")
+	sessionClient  = session.Session{
 		ID:       clientID,
 		Password: []byte(clientKey),
 	}
@@ -345,6 +345,24 @@ func TestPublish(t *testing.T) {
 			authZErr:   nil,
 			publishErr: errors.New("failed to publish"),
 			err:        errFailedPublishToMsgBroker,
+		},
+		{
+			desc:      "publish health check with token successfully",
+			topic:     &hcTopic,
+			payload:   &payload,
+			password:  validToken,
+			session:   &tokenSession,
+			authNRes1: smqauthn.Session{DomainUserID: validID, UserID: validID, DomainID: validID},
+			authNErr:  nil,
+			err:       nil,
+		},
+		{
+			desc:     "publish health check with invalid topic",
+			topic:    &invalidHCTopic,
+			status:   http.StatusBadRequest,
+			password: validToken,
+			session:  &tokenSession,
+			err:      errMalformedTopic,
 		},
 	}
 	for _, tc := range cases {

@@ -113,7 +113,7 @@ func (h *handler) Publish(ctx context.Context, topic *string, payload *[]byte) e
 		return errors.Wrap(errFailedPublish, errClientNotInitialized)
 	}
 
-	domainID, channelID, subtopic, _, err := h.parser.ParsePublishTopic(ctx, *topic, true)
+	domainID, channelID, subtopic, topicType, err := h.parser.ParsePublishTopic(ctx, *topic, true)
 	if err != nil {
 		return errors.Wrap(errMalformedTopic, err)
 	}
@@ -144,6 +144,12 @@ func (h *handler) Publish(ctx context.Context, topic *string, payload *[]byte) e
 		clientID = authnSession.UserID
 	default:
 		return mgate.NewHTTPProxyError(http.StatusUnauthorized, svcerr.ErrAuthentication)
+	}
+
+	// Health topics are not published to message broker.
+	if topicType == messaging.HealthType {
+		h.logger.Info(fmt.Sprintf(logInfoPublished, clientType, clientID, *topic))
+		return nil
 	}
 
 	msg := messaging.Message{
