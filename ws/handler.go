@@ -84,7 +84,7 @@ func (h *handler) AuthPublish(ctx context.Context, topic *string, payload *[]byt
 		return errClientNotInitialized
 	}
 
-	domainID, channelID, _, err := h.parser.ParsePublishTopic(ctx, *topic, true)
+	domainID, channelID, _, _, err := h.parser.ParsePublishTopic(ctx, *topic, true)
 	if err != nil {
 		return mgate.NewHTTPProxyError(http.StatusBadRequest, errors.Wrap(errFailedPublish, err))
 	}
@@ -113,7 +113,7 @@ func (h *handler) AuthSubscribe(ctx context.Context, topics *[]string) error {
 	}
 
 	for _, topic := range *topics {
-		domainID, channelID, _, err := h.parser.ParseSubscribeTopic(ctx, topic, true)
+		domainID, channelID, _, _, err := h.parser.ParseSubscribeTopic(ctx, topic, true)
 		if err != nil {
 			return err
 		}
@@ -141,7 +141,7 @@ func (h *handler) Publish(ctx context.Context, topic *string, payload *[]byte) e
 		return nil
 	}
 
-	domainID, channelID, subtopic, err := h.parser.ParsePublishTopic(ctx, *topic, true)
+	domainID, channelID, subtopic, _, err := h.parser.ParsePublishTopic(ctx, *topic, true)
 	if err != nil {
 		return errors.Wrap(errFailedPublish, err)
 	}

@@ -43,6 +43,14 @@ var (
 	ErrCreateCache          = errors.New("failed to create cache")
 )
 
+type TopicType uint8
+
+const (
+	InvalidType TopicType = iota
+	MessageType
+	HealthType
+)
+
 type CacheConfig struct {
 	NumCounters int64 `env:"NUM_COUNTERS" envDefault:"200000"`  // number of keys to track frequency of.
 	MaxCost     int64 `env:"MAX_COST"     envDefault:"1048576"` // maximum cost of cache.
@@ -60,8 +68,8 @@ type parsedTopic struct {
 // It uses a cache to store parsed topics for quick retrieval.
 // It also resolves domain and channel IDs if requested.
 type TopicParser interface {
-	ParsePublishTopic(ctx context.Context, topic string, resolve bool) (domainID, channelID, subtopic string, err error)
-	ParseSubscribeTopic(ctx context.Context, topic string, resolve bool) (domainID, channelID, subtopic string, err error)
+	ParsePublishTopic(ctx context.Context, topic string, resolve bool) (domainID, channelID, subtopic string, topicType TopicType, err error)
+	ParseSubscribeTopic(ctx context.Context, topic string, resolve bool) (domainID, channelID, subtopic string, topicType TopicType, err error)
 }
 
 type parser struct {
@@ -86,43 +94,43 @@ func NewTopicParser(cfg CacheConfig, channels grpcChannelsV1.ChannelsServiceClie
 	}, nil
 }
 
-func (p *parser) ParsePublishTopic(ctx context.Context, topic string, resolve bool) (string, string, string, error) {
+func (p *parser) ParsePublishTopic(ctx context.Context, topic string, resolve bool) (string, string, string, TopicType, error) {
 	val, ok := p.cache.Get(topic)
 	if ok {
-		return val.domainID, val.channelID, val.subtopic, val.err
+		return val.domainID, val.channelID, val.subtopic, MessageType, val.err
 	}
-	domainID, channelID, subtopic, err := ParsePublishTopic(topic)
+	domainID, channelID, subtopic, topicType, err := ParsePublishTopic(topic)
 	if err != nil {
 		p.saveToCache(topic, "", "", "", err)
-		return "", "", "", err
+		return "", "", "", InvalidType, err
 	}
 	var isRoute bool
 	if resolve {
 		domainID, channelID, isRoute, err = p.resolver.Resolve(ctx, domainID, channelID)
 		if err != nil {
-			return "", "", "", err
+			return "", "", "", InvalidType, err
 		}
 	}
-	if !isRoute {
+	if !isRoute && topicType == MessageType {
 		p.saveToCache(topic, domainID, channelID, subtopic, nil)
 	}
 
-	return domainID, channelID, subtopic, nil
+	return domainID, channelID, subtopic, topicType, nil
 }
 
-func (p *parser) ParseSubscribeTopic(ctx context.Context, topic string, resolve bool) (string, string, string, error) {
-	domainID, channelID, subtopic, err := ParseSubscribeTopic(topic)
+func (p *parser) ParseSubscribeTopic(ctx context.Context, topic string, resolve bool) (string, string, string, TopicType, error) {
+	domainID, channelID, subtopic, topicType, err := ParseSubscribeTopic(topic)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", InvalidType, err
 	}
 	if resolve {
 		domainID, channelID, _, err = p.resolver.Resolve(ctx, domainID, channelID)
 		if err != nil {
-			return "", "", "", err
+			return "", "", "", InvalidType, err
 		}
 	}
 
-	return domainID, channelID, subtopic, nil
+	return domainID, channelID, subtopic, topicType, nil
 }
 
 func (p *parser) saveToCache(topic string, domainID, channelID, subtopic string, err error) {
@@ -165,25 +173,28 @@ func NewTopicResolver(channelsClient grpcChannelsV1.ChannelsServiceClient, domai
 }
 
 func (r *resolver) Resolve(ctx context.Context, domain, channel string) (string, string, bool, error) {
-	if domain == "" || channel == "" {
+	if domain == "" {
 		return "", "", false, ErrEmptyRouteID
 	}
 
-	domainID, isdomainRoute, err := r.resolveDomain(ctx, domain)
+	domainID, isDomainRoute, err := r.resolveDomain(ctx, domain)
 	if err != nil {
 		return "", "", false, errors.Wrap(ErrFailedResolveDomain, err)
+	}
+	if channel == "" {
+		return domainID, "", isDomainRoute, nil
 	}
 	channelID, isChannelRoute, err := r.resolveChannel(ctx, channel, domainID)
 	if err != nil {
 		return "", "", false, errors.Wrap(ErrFailedResolveChannel, err)
 	}
-	isRoute := isdomainRoute || isChannelRoute
+	isRoute := isDomainRoute || isChannelRoute
 
 	return domainID, channelID, isRoute, nil
 }
 
 func (r *resolver) ResolveTopic(ctx context.Context, topic string) (string, error) {
-	domain, channel, subtopic, err := ParseTopic(topic)
+	domain, channel, subtopic, topicType, err := ParseTopic(topic)
 	if err != nil {
 		return "", errors.Wrap(ErrMalformedTopic, err)
 	}
@@ -192,7 +203,7 @@ func (r *resolver) ResolveTopic(ctx context.Context, topic string) (string, erro
 	if err != nil {
 		return "", err
 	}
-	rtopic := EncodeAdapterTopic(domainID, channelID, subtopic)
+	rtopic := encodeAdapterTopic(domainID, channelID, subtopic, topicType)
 
 	return rtopic, nil
 }
@@ -235,17 +246,17 @@ func validateUUID(extID string) (err error) {
 	return nil
 }
 
-func ParsePublishTopic(topic string) (domainID, chanID, subtopic string, err error) {
-	domainID, chanID, subtopic, err = ParseTopic(topic)
+func ParsePublishTopic(topic string) (domainID, chanID, subtopic string, topicType TopicType, err error) {
+	domainID, chanID, subtopic, topicType, err = ParseTopic(topic)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", InvalidType, err
 	}
 	subtopic, err = ParsePublishSubtopic(subtopic)
 	if err != nil {
-		return "", "", "", errors.Wrap(ErrMalformedTopic, err)
+		return "", "", "", InvalidType, errors.Wrap(ErrMalformedTopic, err)
 	}
 
-	return domainID, chanID, subtopic, nil
+	return domainID, chanID, subtopic, topicType, nil
 }
 
 func ParsePublishSubtopic(subtopic string) (parseSubTopic string, err error) {
@@ -269,17 +280,17 @@ func ParsePublishSubtopic(subtopic string) (parseSubTopic string, err error) {
 	return subtopic, nil
 }
 
-func ParseSubscribeTopic(topic string) (domainID string, chanID string, subtopic string, err error) {
-	domainID, chanID, subtopic, err = ParseTopic(topic)
+func ParseSubscribeTopic(topic string) (domainID string, chanID string, subtopic string, topicType TopicType, err error) {
+	domainID, chanID, subtopic, topicType, err = ParseTopic(topic)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", InvalidType, err
 	}
 	subtopic, err = ParseSubscribeSubtopic(subtopic)
 	if err != nil {
-		return "", "", "", errors.Wrap(ErrMalformedTopic, err)
+		return "", "", "", InvalidType, errors.Wrap(ErrMalformedTopic, err)
 	}
 
-	return domainID, chanID, subtopic, nil
+	return domainID, chanID, subtopic, topicType, nil
 }
 
 func ParseSubscribeSubtopic(subtopic string) (parseSubTopic string, err error) {
@@ -347,33 +358,61 @@ func EncodeMessageMQTTTopic(m *Message) string {
 	return topic
 }
 
-func EncodeAdapterTopic(domain, channel, subtopic string) string {
-	topic := fmt.Sprintf("%s/%s/%s/%s", string(MsgTopicPrefix), domain, string(ChannelTopicPrefix), channel)
-	if subtopic != "" {
-		topic = topic + "/" + subtopic
+func encodeAdapterTopic(domain, channel, subtopic string, topicType TopicType) string {
+	switch topicType {
+	case HealthType:
+		return fmt.Sprintf("%s/%s", string(HealthTopicPrefix), domain)
+	default:
+		topic := fmt.Sprintf("%s/%s/%s/%s", string(MsgTopicPrefix), domain, string(ChannelTopicPrefix), channel)
+		if subtopic != "" {
+			topic = topic + "/" + subtopic
+		}
+		return topic
 	}
-	return topic
 }
 
 // ParseTopic parses a messaging topic string and returns the domain ID, channel ID, and subtopic.
+// Supported formats (leading '/' optional):
+//
+//	m/<domain_id>/c/<channel_id>[/<subtopic>]
+//	hc/<domain_id>
+//
 // This is an optimized version with no regex and minimal allocations.
-func ParseTopic(topic string) (domainID, chanID, subtopic string, err error) {
-	// location of string "m"
+func ParseTopic(topic string) (domainID, chanID, subtopic string, topicType TopicType, err error) {
 	start := 0
-	// Handle both formats: "/m/domain/c/channel/subtopic" and "m/domain/c/channel/subtopic".
-	// If topic start with m/ then start is 0 , If topic start with /m/ then start is 1.
 	n := len(topic)
 	if n > 0 && topic[0] == '/' {
 		start = 1
 	}
+	if n <= start {
+		return "", "", "", InvalidType, ErrMalformedTopic
+	}
 
+	// Healthcheck: "hc/<domain_id>"
+	// Check first because it's shortest and avoids extra work.
+	if n > start+3 && topic[start:start+2] == HealthTopicPrefix {
+		if n == start+3 {
+			// "hc/" with no domain
+			return "", "", "", InvalidType, ErrMalformedTopic
+		}
+		// Domain is the remainder; ensure no extra '/'
+		domainID = topic[start+3:]
+		for i := start + 3; i < n; i++ {
+			if topic[i] == '/' {
+				return "", "", "", InvalidType, ErrMalformedTopic
+			}
+		}
+		return domainID, "", "", HealthType, nil
+	}
+
+	// Messaging: "m/<domain_id>/c/<channel_id>[/<subtopic>]"
 	// length check - minimum: "m/<domain_id>/c/" = 5 characters if ignore <domain_id> and in this case start will be 0
 	// length check - minimum: "/m/<domain_id>/c/" = 6 characters if ignore <domain_id> and in this case start will be 1
 	if n < start+5 {
-		return "", "", "", ErrMalformedTopic
+		return "", "", "", InvalidType, ErrMalformedTopic
 	}
 	if topic[start] != MsgTopicPrefix || topic[start+1] != '/' {
-		return "", "", "", ErrMalformedTopic
+		return "", "", "", InvalidType, ErrMalformedTopic
 	}
 	pos := start + 2
 
@@ -386,7 +425,7 @@ func ParseTopic(topic string) (domainID, chanID, subtopic string, err error) {
 		}
 	}
 	if cPos == -1 || cPos == 0 {
-		return "", "", "", ErrMalformedTopic
+		return "", "", "", InvalidType, ErrMalformedTopic
 	}
 	domainID = topic[pos : pos+cPos]
 	// skip "/c/"
@@ -394,7 +433,7 @@ func ParseTopic(topic string) (domainID, chanID, subtopic string, err error) {
 
 	// Ensure channel exists
 	if pos >= n {
-		return "", "", "", ErrMalformedTopic
+		return "", "", "", InvalidType, ErrMalformedTopic
 	}
 
 	// Find '/' after channelID
@@ -407,17 +446,15 @@ func ParseTopic(topic string) (domainID, chanID, subtopic string, err error) {
 	}
 
 	if nextSlash == -1 {
-		// No subtopic
 		chanID = topic[pos:]
 	} else {
 		chanID = topic[pos : pos+nextSlash]
 		subtopic = topic[pos+nextSlash+1:]
 	}
 
-	// Validate channelID
 	if len(chanID) == 0 {
-		return "", "", "", ErrMalformedTopic
+		return "", "", "", InvalidType, ErrMalformedTopic
 	}
 
-	return domainID, chanID, subtopic, nil
+	return domainID, chanID, subtopic, MessageType, nil
 }

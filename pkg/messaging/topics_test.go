@@ -26,6 +26,7 @@ var (
 	channelID        = testsutil.GenerateUUID(&testing.T{})
 	domainID         = testsutil.GenerateUUID(&testing.T{})
 	topicFmt         = "m/%s/c/%s"
+	healthTopicFmt   = "hc/%s"
 	subtopic         = "subtopic"
 	topicSubtopicFmt = "m/%s/c/%s/%s"
 	cachedTopic      = fmt.Sprintf(topicSubtopicFmt, domainID, channelID, subtopic)
@@ -56,6 +57,7 @@ var ParsePublisherTopicTestCases = []struct {
 	domainID  string
 	channelID string
 	subtopic  string
+	topicType messaging.TopicType
 	err       error
 }{
 	{
@@ -64,6 +66,7 @@ var ParsePublisherTopicTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "devices.temp",
+		topicType: messaging.MessageType,
 		err:       nil,
 	},
 	{
@@ -72,6 +75,7 @@ var ParsePublisherTopicTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "devices.temp.data",
+		topicType: messaging.MessageType,
 	},
 	{
 		desc:      "valid topic with subtopic /m/domain/c/channel/extra/extra2",
@@ -79,6 +83,7 @@ var ParsePublisherTopicTestCases = []struct {
 		domainID:  "domain",
 		channelID: "channel",
 		subtopic:  "extra.extra2",
+		topicType: messaging.MessageType,
 	},
 	{
 		desc:      "valid topic without subtopic /m/domain123/c/channel456",
@@ -86,6 +91,7 @@ var ParsePublisherTopicTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "",
+		topicType: messaging.MessageType,
 	},
 	{
 		desc:      "valid topic with trailing slash /m/domain123/c/channel456/devices/temp/",
@@ -93,6 +99,25 @@ var ParsePublisherTopicTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "devices.temp",
+		topicType: messaging.MessageType,
+	},
+	{
+		desc:      "valid health check topic",
+		topic:     fmt.Sprintf(healthTopicFmt, domainID),
+		domainID:  domainID,
+		channelID: "",
+		subtopic:  "",
+		topicType: messaging.HealthType,
+		err:       nil,
+	},
+	{
+		desc:      "invalid health check topic with empty domain",
+		topic:     "hc/",
+		domainID:  "",
+		channelID: "",
+		subtopic:  "",
+		topicType: messaging.InvalidType,
+		err:       messaging.ErrMalformedTopic,
 	},
 	{
 		desc:      "invalid topic format (missing parts) /m/domain123/c/",
@@ -192,12 +217,13 @@ var ParsePublisherTopicTestCases = []struct {
 func TestParsePublishTopic(t *testing.T) {
 	for _, tc := range ParsePublisherTopicTestCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			domainID, channelID, subtopic, err := messaging.ParsePublishTopic(tc.topic)
+			domainID, channelID, subtopic, topicType, err := messaging.ParsePublishTopic(tc.topic)
 			assert.True(t, errors.Contains(err, tc.err), "expected error %v, got %v", tc.err, err)
 			if err == nil {
 				assert.Equal(t, tc.domainID, domainID)
 				assert.Equal(t, tc.channelID, channelID)
 				assert.Equal(t, tc.subtopic, subtopic)
+				assert.Equal(t, tc.topicType, topicType)
 			}
 		})
 	}
@@ -207,7 +233,7 @@ func BenchmarkParsePublisherTopic(b *testing.B) {
 	for _, tc := range ParsePublisherTopicTestCases {
 		b.Run(tc.desc, func(b *testing.B) {
 			for b.Loop() {
-				_, _, _, _ = messaging.ParsePublishTopic(tc.topic)
+				_, _, _, _, _ = messaging.ParsePublishTopic(tc.topic)
 			}
 		})
 	}
@@ -219,6 +245,7 @@ var ParseSubscribeTestCases = []struct {
 	domainID  string
 	channelID string
 	subtopic  string
+	topicType messaging.TopicType
 	err       error
 }{
 	{
@@ -227,6 +254,7 @@ var ParseSubscribeTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "devices.temp",
+		topicType: messaging.MessageType,
 	},
 	{
 		desc:      "topic with wildcards + and # /m/domain123/c/channel456/devices/+/temp/#",
@@ -234,6 +262,7 @@ var ParseSubscribeTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "devices.*.temp.>",
+		topicType: messaging.MessageType,
 	},
 	{
 		desc:      "valid topic without subtopic /m/domain123/c/channel456",
@@ -241,6 +270,7 @@ var ParseSubscribeTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "",
+		topicType: messaging.MessageType,
 	},
 	{
 		desc:      "valid topic with trailing slash /m/domain123/c/channel456/devices/temp/",
@@ -248,6 +278,25 @@ var ParseSubscribeTestCases = []struct {
 		domainID:  "domain123",
 		channelID: "channel456",
 		subtopic:  "devices.temp",
+		topicType: messaging.MessageType,
+	},
+	{
+		desc:      "valid health check topic",
+		topic:     fmt.Sprintf(healthTopicFmt, domainID),
+		domainID:  domainID,
+		channelID: "",
+		subtopic:  "",
+		topicType: messaging.HealthType,
+		err:       nil,
+	},
+	{
+		desc:      "invalid health check topic with empty domain",
+		topic:     "hc/",
+		domainID:  "",
+		channelID: "",
+		subtopic:  "",
+		topicType: messaging.InvalidType,
+		err:       messaging.ErrMalformedTopic,
 	},
 	{
 		desc:      "invalid topic format (missing channel) /m/domain123/c/",
@@ -279,6 +328,7 @@ var ParseSubscribeTestCases = []struct {
 		domainID:  "domain*123",
 		channelID: "channel456",
 		subtopic:  "devices.*.temp.>",
+		topicType: messaging.MessageType,
 	},
 	{
 		desc:      "invalid subtopic /m/domain123/c/channel456/sub/a*b/topic",
@@ -346,12 +396,13 @@ var ParseSubscribeTestCases = []struct {
 func TestParseSubscribeTopic(t *testing.T) {
 	for _, tc := range ParseSubscribeTestCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			domainID, channelID, subtopic, err := messaging.ParseSubscribeTopic(tc.topic)
+			domainID, channelID, subtopic, topicType, err := messaging.ParseSubscribeTopic(tc.topic)
 			assert.True(t, errors.Contains(err, tc.err), "expected error %v, got %v", tc.err, err)
 			if err == nil {
 				assert.Equal(t, tc.domainID, domainID)
 				assert.Equal(t, tc.channelID, channelID)
 				assert.Equal(t, tc.subtopic, subtopic)
+				assert.Equal(t, tc.topicType, topicType)
 			}
 		})
 	}
@@ -361,7 +412,7 @@ func BenchmarkParseSubscribeTopic(b *testing.B) {
 	for _, tc := range ParseSubscribeTestCases {
 		b.Run(tc.desc, func(b *testing.B) {
 			for b.Loop() {
-				_, _, _, _ = messaging.ParseSubscribeTopic(tc.topic)
+				_, _, _, _, _ = messaging.ParseSubscribeTopic(tc.topic)
 			}
 		})
 	}
@@ -579,7 +630,7 @@ func TestResolve(t *testing.T) {
 			channel:   "",
 			domainID:  domainID,
 			channelID: "",
-			err:       messaging.ErrEmptyRouteID,
+			err:       nil,
 		},
 	}
 	for _, tc := range cases {
@@ -724,17 +775,19 @@ func TestParserPublishTopic(t *testing.T) {
 
 	cachedInvalidTopic := "m/invalid-domain/c"
 
-	dom, ch, st, err := parser.ParsePublishTopic(context.Background(), cachedTopic, false)
+	dom, ch, st, tt, err := parser.ParsePublishTopic(context.Background(), cachedTopic, false)
 	assert.Nil(t, err, fmt.Sprintf("unexpected error while publishing topic: %v", err))
 	assert.Equal(t, domainID, dom, "expected domainID %s, got %s", domainID, dom)
 	assert.Equal(t, channelID, ch, "expected channelID %s, got %s", channelID, ch)
 	assert.Equal(t, subtopic, st, "expected subtopic %s, got %s", subtopic, st)
+	assert.Equal(t, messaging.MessageType, tt, "expected topic type %v, got %v", messaging.MessageType, tt)
 
-	dom, ch, st, err = parser.ParsePublishTopic(context.Background(), cachedInvalidTopic, false)
+	dom, ch, st, tt, err = parser.ParsePublishTopic(context.Background(), cachedInvalidTopic, false)
 	assert.NotNil(t, err, "expected error for invalid cached topic")
 	assert.Equal(t, "", dom, "expected empty domainID for invalid topic")
 	assert.Equal(t, "", ch, "expected empty channelID for invalid topic")
 	assert.Equal(t, "", st, "expected empty subtopic for invalid topic")
+	assert.Equal(t, messaging.InvalidType, tt, "expected unknown topic type for invalid topic")
 	time.Sleep(10 * time.Millisecond) // Ensure cache is populated
 
 	cases := []struct {
@@ -745,6 +798,8 @@ func TestParserPublishTopic(t *testing.T) {
 		channel     string
 		domainID    string
 		channelID   string
+		subtopic    string
+		topicType   messaging.TopicType
 		domainsErr  error
 		channelsErr error
 		err         error
@@ -757,6 +812,8 @@ func TestParserPublishTopic(t *testing.T) {
 			channel:   uchannelID,
 			domainID:  udomainID,
 			channelID: uchannelID,
+			subtopic:  subtopic,
+			topicType: messaging.MessageType,
 			err:       nil,
 		},
 		{
@@ -766,6 +823,8 @@ func TestParserPublishTopic(t *testing.T) {
 			channel:   channelID,
 			domainID:  domainID,
 			channelID: channelID,
+			subtopic:  subtopic,
+			topicType: messaging.MessageType,
 			err:       nil,
 		},
 		{
@@ -794,6 +853,8 @@ func TestParserPublishTopic(t *testing.T) {
 			channel:   validRoute,
 			domainID:  domainID,
 			channelID: channelID,
+			subtopic:  subtopic,
+			topicType: messaging.MessageType,
 			err:       nil,
 		},
 		{
@@ -806,6 +867,17 @@ func TestParserPublishTopic(t *testing.T) {
 			channelID:  "",
 			domainsErr: svcerr.ErrNotFound,
 			err:        messaging.ErrFailedResolveDomain,
+		},
+		{
+			desc:      "valid uncached healthcheck topic",
+			topic:     fmt.Sprintf(healthTopicFmt, domainID),
+			domain:    domainID,
+			channel:   "",
+			domainID:  domainID,
+			channelID: "",
+			subtopic:  "",
+			topicType: messaging.HealthType,
+			err:       nil,
 		},
 	}
 	for _, tc := range cases {
@@ -820,12 +892,13 @@ func TestParserPublishTopic(t *testing.T) {
 					Id: tc.channelID,
 				},
 			}, tc.channelsErr)
-			domainID, channelID, subtopic, err := parser.ParsePublishTopic(context.Background(), tc.topic, tc.resolve)
+			domainID, channelID, subtopic, topicType, err := parser.ParsePublishTopic(context.Background(), tc.topic, tc.resolve)
 			assert.True(t, errors.Contains(err, tc.err), "expected error %v, got %v", tc.err, err)
 			if err == nil {
 				assert.Equal(t, tc.domainID, domainID, "expected domainID %s, got %s", tc.domainID, domainID)
 				assert.Equal(t, tc.channelID, channelID, "expected channelID %s, got %s", tc.channelID, channelID)
-				assert.Equal(t, subtopic, "subtopic", "expected subtopic %s, got %s", "subtopic", subtopic)
+				assert.Equal(t, tc.subtopic, subtopic, "expected subtopic %s, got %s", tc.subtopic, subtopic)
+				assert.Equal(t, tc.topicType, topicType, "expected topic type %v, got %v", tc.topicType, topicType)
 			}
 			domainsCall.Unset()
 			channelsCall.Unset()
@@ -842,7 +915,7 @@ func BenchmarkParserPublishTopic(b *testing.B) {
 	for _, tc := range ParsePublisherTopicTestCases {
 		b.Run(tc.desc, func(b *testing.B) {
 			for b.Loop() {
-				_, _, _, _ = parser.ParsePublishTopic(context.Background(), tc.topic, false)
+				_, _, _, _, _ = parser.ParsePublishTopic(context.Background(), tc.topic, false)
 			}
 		})
 	}
@@ -861,6 +934,7 @@ func TestParserSubscribeTopic(t *testing.T) {
 		domainID    string
 		channelID   string
 		subtopic    string
+		topicType   messaging.TopicType
 		domainsErr  error
 		channelsErr error
 		err         error
@@ -873,6 +947,7 @@ func TestParserSubscribeTopic(t *testing.T) {
 			channel:   channelID,
 			domainID:  domainID,
 			channelID: channelID,
+			topicType: messaging.MessageType,
 			err:       nil,
 		},
 		{
@@ -884,6 +959,7 @@ func TestParserSubscribeTopic(t *testing.T) {
 			domainID:  domainID,
 			channelID: channelID,
 			subtopic:  subtopic,
+			topicType: messaging.MessageType,
 			err:       nil,
 		},
 		{
@@ -894,6 +970,7 @@ func TestParserSubscribeTopic(t *testing.T) {
 			channel:   validRoute,
 			domainID:  domainID,
 			channelID: channelID,
+			topicType: messaging.MessageType,
 			err:       nil,
 		},
 		{
@@ -930,12 +1007,13 @@ func TestParserSubscribeTopic(t *testing.T) {
 					Id: tc.channelID,
 				},
 			}, tc.channelsErr)
-			dom, ch, st, err := parser.ParseSubscribeTopic(context.Background(), tc.topic, tc.resolve)
+			dom, ch, st, tt, err := parser.ParseSubscribeTopic(context.Background(), tc.topic, tc.resolve)
 			assert.True(t, errors.Contains(err, tc.err), "expected error %v, got %v", tc.err, err)
 			if err == nil {
 				assert.Equal(t, tc.domainID, dom, "expected domainID %s, got %s", tc.domainID, dom)
 				assert.Equal(t, tc.channelID, ch, "expected channelID %s, got %s", tc.channelID, ch)
 				assert.Equal(t, tc.subtopic, st, "expected  subtopic %s, got %s", tc.subtopic, st)
+				assert.Equal(t, tc.topicType, tt, "expected topic type %v, got %v", tc.topicType, tt)
 			}
 			domainsCall.Unset()
 			channelsCall.Unset()

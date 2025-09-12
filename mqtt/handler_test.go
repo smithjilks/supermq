@@ -46,6 +46,9 @@ var (
 	domainID            = testsutil.GenerateUUID(&testing.T{})
 	topicMsg            = "/m/%s/c/%s"
 	topic               = fmt.Sprintf(topicMsg, domainID, chanID)
+	hcTopicFmt          = "/hc/%s"
+	hcTopic             = fmt.Sprintf(hcTopicFmt, domainID)
+	invalidHCTopic      = "/hc"
 	invalidTopic        = invalidValue
 	payload             = []byte("[{'n':'test-name', 'v': 1.2}]")
 	topics              = []string{topic}
@@ -210,6 +213,21 @@ func TestAuthPublish(t *testing.T) {
 			authZRes: &grpcChannelsV1.AuthzRes{Authorized: false},
 			authZErr: svcerr.ErrAuthorization,
 		},
+		{
+			desc:     "publish to health check topic",
+			session:  &sessionClient,
+			err:      nil,
+			topic:    &hcTopic,
+			payload:  payload,
+			authZRes: &grpcChannelsV1.AuthzRes{Authorized: true},
+		},
+		{
+			desc:    "publich with invalid health check topic",
+			session: &sessionClient,
+			err:     messaging.ErrMalformedTopic,
+			topic:   &invalidHCTopic,
+			payload: payload,
+		},
 	}
 
 	for _, tc := range cases {
@@ -285,6 +303,20 @@ func TestAuthSubscribe(t *testing.T) {
 			topic:     &topics,
 			authZRes:  &grpcChannelsV1.AuthzRes{Authorized: false},
 			channelID: chanID,
+		},
+		{
+			desc:      "subscribe successfully  with health check topic",
+			session:   &sessionClientSub,
+			err:       nil,
+			topic:     &[]string{hcTopic},
+			authZRes:  &grpcChannelsV1.AuthzRes{Authorized: true},
+			channelID: "",
+		},
+		{
+			desc:    "subscribe with invalid health check topic",
+			session: &sessionClientSub,
+			err:     messaging.ErrMalformedTopic,
+			topic:   &[]string{invalidHCTopic},
 		},
 	}
 
@@ -407,6 +439,20 @@ func TestPublish(t *testing.T) {
 			topic:   topic,
 			payload: payload,
 			logMsg:  "",
+		},
+		{
+			desc:    "publish with health check topic",
+			session: &sessionClient,
+			topic:   hcTopic,
+			payload: payload,
+			logMsg:  "",
+		},
+		{
+			desc:    "publish with invalid health check topic",
+			session: &sessionClient,
+			topic:   invalidHCTopic,
+			payload: payload,
+			err:     errors.Wrap(mqtt.ErrFailedPublish, messaging.ErrMalformedTopic),
 		},
 	}
 

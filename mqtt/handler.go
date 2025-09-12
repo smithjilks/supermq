@@ -113,12 +113,12 @@ func (h *handler) AuthPublish(ctx context.Context, topic *string, payload *[]byt
 		return ErrClientNotInitialized
 	}
 
-	domainID, chanID, _, err := h.parser.ParsePublishTopic(ctx, *topic, false)
+	domainID, chanID, _, topicType, err := h.parser.ParsePublishTopic(ctx, *topic, false)
 	if err != nil {
 		return err
 	}
 
-	return h.authAccess(ctx, string(s.Username), domainID, chanID, connections.Publish)
+	return h.authAccess(ctx, string(s.Username), domainID, chanID, connections.Publish, topicType)
 }
 
 // AuthSubscribe is called on device subscribe,
@@ -133,12 +133,12 @@ func (h *handler) AuthSubscribe(ctx context.Context, topics *[]string) error {
 	}
 
 	for _, topic := range *topics {
-		domainID, chanID, _, err := h.parser.ParseSubscribeTopic(ctx, topic, false)
+		domainID, chanID, _, topicType, err := h.parser.ParseSubscribeTopic(ctx, topic, false)
 		if err != nil {
 			return err
 		}
 
-		if err := h.authAccess(ctx, string(s.Username), domainID, chanID, connections.Subscribe); err != nil {
+		if err := h.authAccess(ctx, string(s.Username), domainID, chanID, connections.Subscribe, topicType); err != nil {
 			return err
 		}
 	}
@@ -164,7 +164,7 @@ func (h *handler) Publish(ctx context.Context, topic *string, payload *[]byte) e
 	}
 	h.logger.Info(fmt.Sprintf(LogInfoPublished, s.ID, *topic))
 
-	domainID, chanID, subTopic, err := h.parser.ParsePublishTopic(ctx, *topic, false)
+	domainID, chanID, subTopic, topicType, err := h.parser.ParsePublishTopic(ctx, *topic, false)
 	if err != nil {
 		return errors.Wrap(ErrFailedPublish, err)
 	}
@@ -179,8 +179,10 @@ func (h *handler) Publish(ctx context.Context, topic *string, payload *[]byte) e
 		Created:   time.Now().UnixNano(),
 	}
 
-	if err := h.publisher.Publish(ctx, messaging.EncodeMessageTopic(&msg), &msg); err != nil {
-		return errors.Wrap(ErrFailedPublishToMsgBroker, err)
+	if topicType == messaging.MessageType {
+		if err := h.publisher.Publish(ctx, messaging.EncodeMessageTopic(&msg), &msg); err != nil {
+			return errors.Wrap(ErrFailedPublishToMsgBroker, err)
+		}
 	}
 
 	return nil
@@ -219,21 +221,26 @@ func (h *handler) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (h *handler) authAccess(ctx context.Context, clientID, domainID, chanID string, msgType connections.ConnType) error {
-	ar := &grpcChannelsV1.AuthzReq{
-		Type:       uint32(msgType),
-		ClientId:   clientID,
-		ClientType: policies.ClientType,
-		ChannelId:  chanID,
-		DomainId:   domainID,
-	}
-	res, err := h.channels.Authorize(ctx, ar)
-	if err != nil {
-		return err
-	}
-	if !res.GetAuthorized() {
-		return svcerr.ErrAuthorization
-	}
+func (h *handler) authAccess(ctx context.Context, clientID, domainID, chanID string, msgType connections.ConnType, topicType messaging.TopicType) error {
+	switch topicType {
+	case messaging.HealthType:
+		return nil
+	default:
+		ar := &grpcChannelsV1.AuthzReq{
+			Type:       uint32(msgType),
+			ClientId:   clientID,
+			ClientType: policies.ClientType,
+			ChannelId:  chanID,
+			DomainId:   domainID,
+		}
+		res, err := h.channels.Authorize(ctx, ar)
+		if err != nil {
+			return err
+		}
+		if !res.GetAuthorized() {
+			return svcerr.ErrAuthorization
+		}
 
-	return nil
+		return nil
+	}
 }
