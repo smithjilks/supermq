@@ -37,10 +37,14 @@ func New(tracer trace.Tracer, svc coap.Service) coap.Service {
 }
 
 // Publish traces a CoAP publish operation.
-func (tm *tracingServiceMiddleware) Publish(ctx context.Context, key string, msg *messaging.Message) error {
-	ctx, span := tm.tracer.Start(ctx, publishOP)
+func (tm *tracingServiceMiddleware) Publish(ctx context.Context, key string, msg *messaging.Message, topicType messaging.TopicType) error {
+	ctx, span := tm.tracer.Start(ctx, publishOP, trace.WithAttributes(
+		attribute.String("channel_id", msg.Channel),
+		attribute.String("domain_id", msg.Domain),
+		attribute.String("topic_type", string(topicType)),
+	))
 	defer span.End()
-	return tm.svc.Publish(ctx, key, msg)
+	return tm.svc.Publish(ctx, key, msg, topicType)
 }
 
 // Subscribe traces a CoAP subscribe operation.

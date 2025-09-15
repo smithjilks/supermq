@@ -32,13 +32,13 @@ func MetricsMiddleware(svc coap.Service, counter metrics.Counter, latency metric
 }
 
 // Publish instruments Publish method with metrics.
-func (mm *metricsMiddleware) Publish(ctx context.Context, key string, msg *messaging.Message) error {
+func (mm *metricsMiddleware) Publish(ctx context.Context, key string, msg *messaging.Message, topicType messaging.TopicType) error {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "publish").Add(1)
 		mm.latency.With("method", "publish").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mm.svc.Publish(ctx, key, msg)
+	return mm.svc.Publish(ctx, key, msg, topicType)
 }
 
 // Subscribe instruments Subscribe method with metrics.

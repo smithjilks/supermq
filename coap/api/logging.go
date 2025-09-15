@@ -28,7 +28,7 @@ func LoggingMiddleware(svc coap.Service, logger *slog.Logger) coap.Service {
 
 // Publish logs the publish request. It logs the channel ID, subtopic (if any) and the time it took to complete the request.
 // If the request fails, it logs the error.
-func (lm *loggingMiddleware) Publish(ctx context.Context, key string, msg *messaging.Message) (err error) {
+func (lm *loggingMiddleware) Publish(ctx context.Context, key string, msg *messaging.Message, topicType messaging.TopicType) (err error) {
 	defer func(begin time.Time) {
 		args := []any{
 			slog.String("duration", time.Since(begin).String()),
@@ -46,7 +46,7 @@ func (lm *loggingMiddleware) Publish(ctx context.Context, key string, msg *messa
 		lm.logger.Info("Publish message completed successfully", args...)
 	}(time.Now())
 
-	return lm.svc.Publish(ctx, key, msg)
+	return lm.svc.Publish(ctx, key, msg, topicType)
 }
 
 // Subscribe logs the subscribe request. It logs the channel ID, subtopic (if any) and the time it took to complete the request.
