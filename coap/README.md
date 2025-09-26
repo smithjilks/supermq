@@ -28,7 +28,7 @@ The service is configured using the environment variables presented in the follo
 | SMQ_MESSAGE_BROKER_URL              | Message broker instance URL                                                         | <amqp://guest:guest@rabbitmq:5672/> |
 | SMQ_JAEGER_URL                      | Jaeger server URL                                                                   | <http://localhost:4318/v1/traces>   |
 | SMQ_JAEGER_TRACE_RATIO              | Jaeger sampling ratio                                                               | 1.0                                 |
-| SMQ_SEND_TELEMETRY                  | Send telemetry to magistrala call home server                                       | true                                |
+| SMQ_SEND_TELEMETRY                  | Send telemetry to supermq call home server                                       | true                                |
 | SMQ_COAP_ADAPTER_INSTANCE_ID        | CoAP adapter instance ID                                                            | ""                                  |
 
 ## Deployment
@@ -42,7 +42,7 @@ To start the service outside of the container, execute the following shell scrip
 # download the latest version of the service
 git clone https://github.com/absmach/supermq
 
-cd magistrala
+cd supermq
 
 # compile the http
 make coap

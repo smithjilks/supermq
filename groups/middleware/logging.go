@@ -11,7 +11,7 @@ import (
 	"github.com/absmach/supermq/groups"
 	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/roles"
-	rmMW "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
+	rolemw "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
@@ -20,12 +20,12 @@ var _ groups.Service = (*loggingMiddleware)(nil)
 type loggingMiddleware struct {
 	logger *slog.Logger
 	svc    groups.Service
-	rmMW.RoleManagerLoggingMiddleware
+	rolemw.RoleManagerLoggingMiddleware
 }
 
-// LoggingMiddleware adds logging facilities to the groups service.
-func LoggingMiddleware(svc groups.Service, logger *slog.Logger) groups.Service {
-	return &loggingMiddleware{logger, svc, rmMW.NewRoleManagerLoggingMiddleware("groups", svc, logger)}
+// NewLogging adds logging facilities to the groups service.
+func NewLogging(svc groups.Service, logger *slog.Logger) groups.Service {
+	return &loggingMiddleware{logger, svc, rolemw.NewLogging("groups", svc, logger)}
 }
 
 // CreateGroup logs the create_group request. It logs the group name, id and token and the time it took to complete the request.

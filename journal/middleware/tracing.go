@@ -20,7 +20,8 @@ type tracing struct {
 	svc    journal.Service
 }
 
-func Tracing(svc journal.Service, tracer trace.Tracer) journal.Service {
+// NewTracing returns a new journal service with tracing capabilities.
+func NewTracing(svc journal.Service, tracer trace.Tracer) journal.Service {
 	return &tracing{tracer, svc}
 }
 

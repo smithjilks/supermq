@@ -17,7 +17,7 @@ import (
 	svcerr "github.com/absmach/supermq/pkg/errors/service"
 	"github.com/absmach/supermq/pkg/policies"
 	"github.com/absmach/supermq/pkg/roles"
-	rmMW "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
+	rolemw "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
 	"github.com/absmach/supermq/pkg/svcutil"
 )
 
@@ -45,11 +45,11 @@ type authorizationMiddleware struct {
 	opp     svcutil.OperationPerm
 	extOpp  svcutil.ExternalOperationPerm
 	callout callout.Callout
-	rmMW.RoleManagerAuthorizationMiddleware
+	rolemw.RoleManagerAuthorizationMiddleware
 }
 
-// AuthorizationMiddleware adds authorization to the clients service.
-func AuthorizationMiddleware(
+// NewAuthorization adds authorization to the clients service.
+func NewAuthorization(
 	entityType string,
 	svc clients.Service,
 	authz smqauthz.Authorization,
@@ -65,7 +65,7 @@ func AuthorizationMiddleware(
 	if err := opp.Validate(); err != nil {
 		return nil, err
 	}
-	ram, err := rmMW.NewRoleManagerAuthorizationMiddleware(policies.ClientType, svc, authz, rolesOpPerm, callout)
+	ram, err := rolemw.NewAuthorization(policies.ClientType, svc, authz, rolesOpPerm, callout)
 	if err != nil {
 		return nil, err
 	}

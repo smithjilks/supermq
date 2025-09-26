@@ -23,8 +23,8 @@ type authorizationMiddleware struct {
 	authz smqauthz.Authorization
 }
 
-// AuthorizationMiddleware adds authorization to the journal service.
-func AuthorizationMiddleware(svc journal.Service, authz smqauthz.Authorization) journal.Service {
+// NewAuthorization adds authorization to the journal service.
+func NewAuthorization(svc journal.Service, authz smqauthz.Authorization) journal.Service {
 	return &authorizationMiddleware{
 		svc:   svc,
 		authz: authz,

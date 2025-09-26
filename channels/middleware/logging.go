@@ -13,7 +13,7 @@ import (
 	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/connections"
 	"github.com/absmach/supermq/pkg/roles"
-	rmMW "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
+	rolemw "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
@@ -22,11 +22,12 @@ var _ channels.Service = (*loggingMiddleware)(nil)
 type loggingMiddleware struct {
 	logger *slog.Logger
 	svc    channels.Service
-	rmMW.RoleManagerLoggingMiddleware
+	rolemw.RoleManagerLoggingMiddleware
 }
 
-func LoggingMiddleware(svc channels.Service, logger *slog.Logger) channels.Service {
-	return &loggingMiddleware{logger, svc, rmMW.NewRoleManagerLoggingMiddleware("channels", svc, logger)}
+// NewLogging adds logging facilities to the channels service.
+func NewLogging(svc channels.Service, logger *slog.Logger) channels.Service {
+	return &loggingMiddleware{logger, svc, rolemw.NewLogging("channels", svc, logger)}
 }
 
 func (lm *loggingMiddleware) CreateChannels(ctx context.Context, session authn.Session, clients ...channels.Channel) (cs []channels.Channel, rps []roles.RoleProvision, err error) {

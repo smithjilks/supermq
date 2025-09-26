@@ -12,7 +12,7 @@ import (
 	"github.com/absmach/supermq/clients"
 	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/roles"
-	rmMW "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
+	rolemw "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
@@ -21,14 +21,15 @@ var _ clients.Service = (*loggingMiddleware)(nil)
 type loggingMiddleware struct {
 	logger *slog.Logger
 	svc    clients.Service
-	rmMW.RoleManagerLoggingMiddleware
+	rolemw.RoleManagerLoggingMiddleware
 }
 
-func LoggingMiddleware(svc clients.Service, logger *slog.Logger) clients.Service {
+// NewLogging adds logging facilities to the core service.
+func NewLogging(svc clients.Service, logger *slog.Logger) clients.Service {
 	return &loggingMiddleware{
 		logger:                       logger,
 		svc:                          svc,
-		RoleManagerLoggingMiddleware: rmMW.NewRoleManagerLoggingMiddleware("clients", svc, logger),
+		RoleManagerLoggingMiddleware: rolemw.NewLogging("clients", svc, logger),
 	}
 }
 

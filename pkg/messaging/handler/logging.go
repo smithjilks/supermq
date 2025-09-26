@@ -21,8 +21,8 @@ type loggingMiddleware struct {
 	svc    session.Handler
 }
 
-// LoggingMiddleware adds logging facilities to the adapter.
-func LoggingMiddleware(svc session.Handler, logger *slog.Logger) session.Handler {
+// NewLogging adds logging facilities to the adapter.
+func NewLogging(svc session.Handler, logger *slog.Logger) session.Handler {
 	return &loggingMiddleware{logger, svc}
 }
 

@@ -22,7 +22,8 @@ type RoleManagerMetricsMiddleware struct {
 	latency metrics.Histogram
 }
 
-func NewRoleManagerMetricsMiddleware(svcName string, svc roles.RoleManager, counter metrics.Counter, latency metrics.Histogram) RoleManagerMetricsMiddleware {
+// NewMetrics instruments core service by tracking request count and latency.
+func NewMetrics(svcName string, svc roles.RoleManager, counter metrics.Counter, latency metrics.Histogram) RoleManagerMetricsMiddleware {
 	return RoleManagerMetricsMiddleware{
 		svcName: svcName,
 		svc:     svc,

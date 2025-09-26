@@ -323,7 +323,7 @@ func TestRetrieveAll(t *testing.T) {
 			Metadata:  users.Metadata{},
 			Status:    users.EnabledStatus,
 			Tags:      []string{"tag1"},
-			CreatedAt: time.Now().UTC().Truncate(time.Millisecond),
+			CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}
 		if i%50 == 0 {
 			user.Metadata = map[string]any{
@@ -1127,7 +1127,7 @@ func TestUpdateRole(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			updatedAt := time.Now().UTC().Truncate(time.Millisecond)
+			updatedAt := time.Now().UTC().Truncate(time.Microsecond)
 			updatedBy := testsutil.GenerateUUID(t)
 			c.userReq.UpdatedAt = updatedAt
 			c.userReq.UpdatedBy = updatedBy
@@ -1199,7 +1199,7 @@ func TestUpdateEmail(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			updatedAt := time.Now().UTC().Truncate(time.Millisecond)
+			updatedAt := time.Now().UTC().Truncate(time.Microsecond)
 			updatedBy := testsutil.GenerateUUID(t)
 			c.userReq.UpdatedAt = updatedAt
 			c.userReq.UpdatedBy = updatedBy
@@ -1453,7 +1453,7 @@ func TestUpdate(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			updatedAt := time.Now().UTC().Truncate(time.Millisecond)
+			updatedAt := time.Now().UTC().Truncate(time.Microsecond)
 			updatedBy := testsutil.GenerateUUID(t)
 			c.userReq.UpdatedAt = &updatedAt
 			c.userReq.UpdatedBy = &updatedBy
@@ -1548,7 +1548,7 @@ func TestUpdateUsername(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			c.user.UpdatedAt = time.Now().UTC().Truncate(time.Millisecond)
+			c.user.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 			c.user.UpdatedBy = testsutil.GenerateUUID(t)
 			expected, err := repo.UpdateUsername(context.Background(), c.user)
 			assert.True(t, errors.Contains(err, c.err), fmt.Sprintf("expected %s to contain %s\n", err, c.err))
@@ -1614,7 +1614,7 @@ func TestUpdateSecret(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			c.user.UpdatedAt = time.Now().UTC().Truncate(time.Millisecond)
+			c.user.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 			c.user.UpdatedBy = testsutil.GenerateUUID(t)
 			_, err := repo.UpdateSecret(context.Background(), c.user)
 			assert.True(t, errors.Contains(err, c.err), fmt.Sprintf("expected %s to contain %s\n", err, c.err))
@@ -1677,7 +1677,7 @@ func TestChangeStatus(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			c.user.UpdatedAt = time.Now().UTC().Truncate(time.Millisecond)
+			c.user.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 			c.user.UpdatedBy = testsutil.GenerateUUID(t)
 			expected, err := repo.ChangeStatus(context.Background(), c.user)
 			assert.True(t, errors.Contains(err, c.err), fmt.Sprintf("expected %s to contain %s\n", err, c.err))
@@ -2086,7 +2086,7 @@ func generateUser(t *testing.T, status users.Status, repo users.Repository) user
 			"name": namesgen.Generate(),
 		},
 		Status:    status,
-		CreatedAt: time.Now().UTC().Truncate(time.Millisecond),
+		CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 	}
 	user, err := repo.Save(context.Background(), usr)
 	require.Nil(t, err, fmt.Sprintf("add new user: expected nil got %s\n", err))

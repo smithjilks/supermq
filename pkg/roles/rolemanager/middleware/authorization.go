@@ -27,8 +27,8 @@ type RoleManagerAuthorizationMiddleware struct {
 	opp        svcutil.OperationPerm
 }
 
-// AuthorizationMiddleware adds authorization to the clients service.
-func NewRoleManagerAuthorizationMiddleware(entityType string, svc roles.RoleManager, authz smqauthz.Authorization, opPerm map[svcutil.Operation]svcutil.Permission, callout callout.Callout) (RoleManagerAuthorizationMiddleware, error) {
+// NewAuthorization adds authorization for role related methods to the core service.
+func NewAuthorization(entityType string, svc roles.RoleManager, authz smqauthz.Authorization, opPerm map[svcutil.Operation]svcutil.Permission, callout callout.Callout) (RoleManagerAuthorizationMiddleware, error) {
 	opp := roles.NewOperationPerm()
 	if err := opp.AddOperationPermissionMap(opPerm); err != nil {
 		return RoleManagerAuthorizationMiddleware{}, err

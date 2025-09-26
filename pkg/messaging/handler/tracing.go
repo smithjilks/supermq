@@ -29,7 +29,7 @@ type handlerMiddleware struct {
 	tracer  trace.Tracer
 }
 
-// NewHandler creates a new session.Handler middleware with tracing.
+// NewTracing creates a new session.Handler middleware with tracing.
 func NewTracing(tracer trace.Tracer, handler session.Handler) session.Handler {
 	return &handlerMiddleware{
 		tracer:  tracer,

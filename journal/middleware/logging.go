@@ -20,8 +20,8 @@ type loggingMiddleware struct {
 	service journal.Service
 }
 
-// LoggingMiddleware adds logging facilities to the adapter.
-func LoggingMiddleware(service journal.Service, logger *slog.Logger) journal.Service {
+// NewLogging adds logging facilities to the adapter.
+func NewLogging(service journal.Service, logger *slog.Logger) journal.Service {
 	return &loggingMiddleware{
 		logger:  logger,
 		service: service,

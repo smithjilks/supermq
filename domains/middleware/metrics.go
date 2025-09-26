@@ -12,7 +12,7 @@ import (
 	"github.com/absmach/supermq/domains"
 	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/roles"
-	rmMW "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
+	rolemw "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
 	"github.com/go-kit/kit/metrics"
 )
 
@@ -22,12 +22,12 @@ type metricsMiddleware struct {
 	counter metrics.Counter
 	latency metrics.Histogram
 	svc     domains.Service
-	rmMW.RoleManagerMetricsMiddleware
+	rolemw.RoleManagerMetricsMiddleware
 }
 
-// MetricsMiddleware instruments core service by tracking request count and latency.
-func MetricsMiddleware(svc domains.Service, counter metrics.Counter, latency metrics.Histogram) domains.Service {
-	rmmw := rmMW.NewRoleManagerMetricsMiddleware("domains", svc, counter, latency)
+// NewMetrics instruments core service by tracking request count and latency.
+func NewMetrics(svc domains.Service, counter metrics.Counter, latency metrics.Histogram) domains.Service {
+	rmmw := rolemw.NewMetrics("domains", svc, counter, latency)
 
 	return &metricsMiddleware{
 		counter:                      counter,

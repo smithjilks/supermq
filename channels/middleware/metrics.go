@@ -11,7 +11,7 @@ import (
 	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/connections"
 	"github.com/absmach/supermq/pkg/roles"
-	rmMW "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
+	rolemw "github.com/absmach/supermq/pkg/roles/rolemanager/middleware"
 	"github.com/go-kit/kit/metrics"
 )
 
@@ -21,16 +21,16 @@ type metricsMiddleware struct {
 	counter metrics.Counter
 	latency metrics.Histogram
 	svc     channels.Service
-	rmMW.RoleManagerMetricsMiddleware
+	rolemw.RoleManagerMetricsMiddleware
 }
 
-// MetricsMiddleware returns a new metrics middleware wrapper.
-func MetricsMiddleware(svc channels.Service, counter metrics.Counter, latency metrics.Histogram) channels.Service {
+// NewMetrics returns a new metrics middleware wrapper.
+func NewMetrics(svc channels.Service, counter metrics.Counter, latency metrics.Histogram) channels.Service {
 	return &metricsMiddleware{
 		counter:                      counter,
 		latency:                      latency,
 		svc:                          svc,
-		RoleManagerMetricsMiddleware: rmMW.NewRoleManagerMetricsMiddleware("channels", svc, counter, latency),
+		RoleManagerMetricsMiddleware: rolemw.NewMetrics("channels", svc, counter, latency),
 	}
 }
 

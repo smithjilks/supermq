@@ -240,9 +240,9 @@ func newService(pub messaging.Publisher, authn smqauthn.Authentication, cacheCfg
 	}
 	svc := adapter.NewHandler(pub, authn, clients, channels, parser, logger)
 	svc = handler.NewTracing(tracer, svc)
-	svc = handler.LoggingMiddleware(svc, logger)
+	svc = handler.NewLogging(svc, logger)
 	counter, latency := prometheus.MakeMetrics(svcName, "api")
-	svc = handler.MetricsMiddleware(svc, counter, latency)
+	svc = handler.NewMetrics(svc, counter, latency)
 	return svc, nil
 }
 

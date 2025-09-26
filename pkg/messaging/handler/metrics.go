@@ -21,8 +21,8 @@ type metricsMiddleware struct {
 	svc     session.Handler
 }
 
-// MetricsMiddleware instruments adapter by tracking request count and latency.
-func MetricsMiddleware(svc session.Handler, counter metrics.Counter, latency metrics.Histogram) session.Handler {
+// NewMetrics instruments adapter by tracking request count and latency.
+func NewMetrics(svc session.Handler, counter metrics.Counter, latency metrics.Histogram) session.Handler {
 	return &metricsMiddleware{
 		counter: counter,
 		latency: latency,
