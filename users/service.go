@@ -182,6 +182,10 @@ func (svc service) IssueToken(ctx context.Context, identity, secret string) (*gr
 		dbUser, err = svc.users.RetrieveByEmail(ctx, identity)
 	}
 
+	if err == repoerr.ErrNotFound {
+		return &grpcTokenV1.Token{}, errors.Wrap(svcerr.ErrLogin, err)
+	}
+
 	if err != nil {
 		return &grpcTokenV1.Token{}, errors.Wrap(svcerr.ErrAuthentication, err)
 	}

@@ -17,7 +17,7 @@ var (
 	ErrDomainAuthorization = errors.New("failed to perform authorization over the domain")
 
 	// ErrLogin indicates wrong login credentials.
-	ErrLogin = errors.New("invalid user id or secret")
+	ErrLogin = errors.New("invalid credentials")
 
 	// ErrMalformedEntity indicates a malformed entity specification.
 	ErrMalformedEntity = errors.New("malformed entity specification")
