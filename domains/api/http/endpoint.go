@@ -77,13 +77,9 @@ func updateDomainEndpoint(svc domains.Service) endpoint.Endpoint {
 			return nil, svcerr.ErrAuthorization
 		}
 
-		var metadata domains.Metadata
-		if req.Metadata != nil {
-			metadata = *req.Metadata
-		}
 		d := domains.DomainReq{
 			Name:     req.Name,
-			Metadata: &metadata,
+			Metadata: req.Metadata,
 			Tags:     req.Tags,
 		}
 		domain, err := svc.UpdateDomain(ctx, session, req.domainID, d)

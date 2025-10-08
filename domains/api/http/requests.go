@@ -51,9 +51,9 @@ func (req retrieveDomainRequest) validate() error {
 
 type updateDomainReq struct {
 	domainID string
-	Name     *string         `json:"name,omitempty"`
-	Metadata *map[string]any `json:"metadata,omitempty"`
-	Tags     *[]string       `json:"tags,omitempty"`
+	Name     *string           `json:"name,omitempty"`
+	Metadata *domains.Metadata `json:"metadata,omitempty"`
+	Tags     *[]string         `json:"tags,omitempty"`
 }
 
 func (req updateDomainReq) validate() error {

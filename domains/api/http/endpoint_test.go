@@ -736,6 +736,42 @@ func TestUpdateDomain(t *testing.T) {
 			err:         nil,
 		},
 		{
+			desc:     "update domain name successfully",
+			token:    validToken,
+			domainID: domain.ID,
+			updateReq: domains.DomainReq{
+				Name: &updatedName,
+			},
+			contentType: contentType,
+			status:      http.StatusOK,
+			svcRes:      updatedDomain,
+			err:         nil,
+		},
+		{
+			desc:     "update domain tags successfully",
+			token:    validToken,
+			domainID: domain.ID,
+			updateReq: domains.DomainReq{
+				Tags: &updatedTags,
+			},
+			contentType: contentType,
+			status:      http.StatusOK,
+			svcRes:      updatedDomain,
+			err:         nil,
+		},
+		{
+			desc:     "update domain metadata successfully",
+			token:    validToken,
+			domainID: domain.ID,
+			updateReq: domains.DomainReq{
+				Metadata: &updatedMetadata,
+			},
+			contentType: contentType,
+			status:      http.StatusOK,
+			svcRes:      updatedDomain,
+			err:         nil,
+		},
+		{
 			desc:     "update domain with empty token",
 			token:    "",
 			domainID: domain.ID,
