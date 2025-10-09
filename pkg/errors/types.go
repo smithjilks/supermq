@@ -46,6 +46,9 @@ var (
 	// ErrChannelRouteNotAvailable indicates that the channel route is not available.
 	ErrChannelRouteNotAvailable = New("channel route not available")
 
+	// ErrTryAgain indicates to try the operation again.
+	ErrTryAgain = New("Something went wrong, please try again")
+
 	// ErrRouteNotAvailable indicates that the username is not available.
 	ErrRouteNotAvailable = New("route not available")
 )

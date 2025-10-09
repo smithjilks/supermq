@@ -5,8 +5,13 @@ package users
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	mrand "math/rand"
 	"net/mail"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/absmach/supermq"
@@ -18,12 +23,17 @@ import (
 	repoerr "github.com/absmach/supermq/pkg/errors/repository"
 	svcerr "github.com/absmach/supermq/pkg/errors/service"
 	"github.com/absmach/supermq/pkg/policies"
+	"github.com/gofrs/uuid/v5"
 )
+
+const defaultUsernamePrefix = "user"
 
 var (
 	errIssueToken       = errors.New("failed to issue token")
 	errRecoveryToken    = errors.New("failed to generate password recovery token")
 	errLoginDisableUser = errors.New("failed to login in disabled user")
+
+	usernameRegExp = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{34}[a-z0-9]$`)
 )
 
 type service struct {
@@ -555,8 +565,12 @@ func (svc service) OAuthCallback(ctx context.Context, user User) (User, error) {
 	u, err := svc.users.RetrieveByEmail(ctx, user.Email)
 
 	if errors.Contains(err, repoerr.ErrNotFound) {
+		user.Credentials.Username = generateUsername(user.Email)
 		u, err = svc.Register(ctx, authn.Session{}, user, true)
 		if err != nil {
+			if errors.Contains(err, errors.ErrUsernameNotAvailable) {
+				return User{}, errors.ErrTryAgain
+			}
 			return User{}, err
 		}
 	}
@@ -672,4 +686,92 @@ func (svc service) updateUserPolicy(ctx context.Context, userID string, role Rol
 
 		return nil
 	}
+}
+
+func generateUsername(email string) string {
+	uniqueSuffix := generateRandomID()
+	emailPrefix := extractEmailPrefix(email)
+	return fmt.Sprintf("%s_%s", emailPrefix, uniqueSuffix)
+}
+
+func extractEmailPrefix(email string) string {
+	parts := strings.Split(email, "@")
+	if len(parts) == 0 {
+		return defaultUsernamePrefix
+	}
+
+	prefix := parts[0]
+	cleaned := usernameRegExp.ReplaceAllString(prefix, "")
+
+	cleaned = sanitizeForUsername(cleaned, 15)
+	if cleaned == "" {
+		cleaned = defaultUsernamePrefix
+	}
+
+	return cleaned
+}
+
+func generateRandomID() string {
+	randomBytes := make([]byte, 0, 16)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return fmt.Sprintf("%x", time.Now().UnixNano())[:10]
+	}
+	id, err := uuid.NewV4()
+	if err == nil {
+		randomBytes = append(randomBytes, id.Bytes()...)
+	}
+
+	mrand.Shuffle(len(randomBytes), func(i, j int) {
+		randomBytes[i], randomBytes[j] = randomBytes[j], randomBytes[i]
+	})
+	return hex.EncodeToString(randomBytes)[:10]
+}
+
+// sanitizeForUsername extracts and cleans a string for use in username generation.
+// As per the username requirements:
+// - It keeps only lowercase alphanumeric characters, hyphens, and underscores
+// - ensures valid boundaries (no hyphens/underscores at start/end)
+// - removes consecutive hyphens/underscores (to pass validation)
+// and finally limits the result to maxLen characters.
+func sanitizeForUsername(s string, maxLen int) string {
+	if s == "" {
+		return ""
+	}
+
+	// Convert to lowercase
+	s = strings.ToLower(s)
+
+	// Filter characters - keep only alphanumeric, hyphen, underscore
+	buf := make([]byte, 0, len(s))
+	var lastChar byte
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+
+		// Keep alphanumeric, hyphen, underscore
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
+			// Skip if current char is hyphen/underscore and same as last char
+			if (c == '-' || c == '_') && c == lastChar {
+				continue // Skip consecutive hyphens or underscores
+			}
+			buf = append(buf, c)
+			lastChar = c
+		} else {
+			lastChar = 0 // Reset on special char
+		}
+	}
+
+	cleaned := string(buf)
+
+	// Trim invalid boundary characters
+	cleaned = strings.Trim(cleaned, "-_")
+
+	// Limit length
+	if len(cleaned) > maxLen {
+		cleaned = cleaned[:maxLen]
+		// Re-trim in case truncation exposed hyphen/underscore at end
+		cleaned = strings.TrimRight(cleaned, "-_")
+	}
+
+	return cleaned
 }
