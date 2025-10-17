@@ -21,6 +21,48 @@ import (
 
 var errFailedToRead = errors.New("failed to read callout response body")
 
+// Can be used in the implementation of
+// callout service with structured payload.
+type BaseRequest struct {
+	Operation  string    `json:"operation,omitempty"`
+	EntityType string    `json:"entity_type,omitempty"`
+	EntityID   string    `json:"entity_id,omitempty"`
+	CallerID   string    `json:"caller_id,omitempty"`
+	CallerType string    `json:"caller_type,omitempty"`
+	DomainID   string    `json:"domain_id,omitempty"`
+	Time       time.Time `json:"time,omitempty"`
+}
+
+type Request struct {
+	BaseRequest
+	Payload map[string]any `json:"payload,omitempty"`
+}
+
+func (r *Request) toURL() (string, error) {
+	baseBytes, err := json.Marshal(r.BaseRequest)
+	if err != nil {
+		return "", err
+	}
+	res := map[string]any{}
+	maps.Copy(res, r.Payload)
+
+	if err := json.Unmarshal(baseBytes, &res); err != nil {
+		return "", err
+	}
+
+	ret := url.Values{}
+	for k, v := range res {
+		ret.Set(k, fmt.Sprintf("%v", v))
+	}
+
+	return ret.Encode(), nil
+}
+
+// Callout send a request to an external service.
+type Callout interface {
+	Callout(ctx context.Context, req Request) error
+}
+
 type Config struct {
 	URLs            []string      `env:"URLS"             envDefault:"" envSeparator:","`
 	Method          string        `env:"METHOD"           envDefault:"POST"`
@@ -39,27 +81,15 @@ type callout struct {
 	allowedOperation map[string]struct{}
 }
 
-type CallOutReq struct {
-	Operation   string         `json:"operation"`
-	SubjectID   string         `json:"subject_id"`
-	SubjectType string         `json:"subject_type"`
-	Payload     map[string]any `json:"payload"`
-}
-
-// Callout send request to an external service.
-type Callout interface {
-	Callout(ctx context.Context, perm string, pl map[string]any) error
-}
-
 // New creates a new instance of Callout.
 func New(cfg Config) (Callout, error) {
-	httpClient, err := newCalloutClient(cfg.TLSVerification, cfg.Cert, cfg.Key, cfg.CACert, cfg.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("failied to initialize http client: %w", err)
-	}
-
 	if cfg.Method != http.MethodPost && cfg.Method != http.MethodGet {
 		return nil, fmt.Errorf("unsupported auth callout method: %s", cfg.Method)
+	}
+
+	httpClient, err := newCalloutClient(cfg.TLSVerification, cfg.Cert, cfg.Key, cfg.CACert, cfg.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize http client: %w", err)
 	}
 
 	allowedOperation := make(map[string]struct{})
@@ -75,9 +105,29 @@ func New(cfg Config) (Callout, error) {
 	}, nil
 }
 
-func newCalloutClient(ctls bool, certPath, keyPath, caPath string, timeout time.Duration) (*http.Client, error) {
+func (c *callout) Callout(ctx context.Context, req Request) error {
+	if len(c.urls) == 0 {
+		return nil
+	}
+
+	if _, exists := c.allowedOperation[req.Operation]; !exists {
+		return nil
+	}
+
+	// Make requests sequentially as they appear in the URL
+	// slice and fail fast as soon as any request fails.
+	for _, url := range c.urls {
+		if err := c.makeRequest(ctx, url, req); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func newCalloutClient(skipInsecure bool, certPath, keyPath, caPath string, timeout time.Duration) (*http.Client, error) {
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: !ctls,
+		InsecureSkipVerify: !skipInsecure,
 	}
 	if certPath != "" || keyPath != "" {
 		clientTLSCert, err := server.LoadX509KeyPair(certPath, keyPath)
@@ -103,48 +153,34 @@ func newCalloutClient(ctls bool, certPath, keyPath, caPath string, timeout time.
 	return httpClient, nil
 }
 
-func (c *callout) makeRequest(ctx context.Context, urlStr string, params map[string]any) error {
-	var req *http.Request
+func (c *callout) makeRequest(ctx context.Context, urlStr string, req Request) error {
+	var r *http.Request
 	var err error
 
 	switch c.method {
 	case http.MethodGet:
-		query := url.Values{}
-		for key, value := range params {
-			query.Set(key, fmt.Sprintf("%v", value))
+		var query string
+		query, err = req.toURL()
+		if err != nil {
+			return err
 		}
-		req, err = http.NewRequestWithContext(ctx, c.method, urlStr+"?"+query.Encode(), nil)
+		r, err = http.NewRequestWithContext(ctx, c.method, urlStr+"?"+query, nil)
 	case http.MethodPost:
-		payload := make(map[string]any)
-		maps.Copy(payload, params)
-		operation, _ := params["operation"].(string)
-		subjectID, _ := params["subject_id"].(string)
-		subjectType, _ := params["subject_type"].(string)
-
-		delete(payload, "subject_id")
-		delete(payload, "subject_type")
-		delete(payload, "operation")
-
-		calloutReq := CallOutReq{
-			Operation:   operation,
-			SubjectID:   subjectID,
-			SubjectType: subjectType,
-			Payload:     payload,
-		}
-
-		data, jsonErr := json.Marshal(calloutReq)
+		data, jsonErr := json.Marshal(req)
 		if jsonErr != nil {
 			return jsonErr
 		}
-		req, err = http.NewRequestWithContext(ctx, c.method, urlStr, bytes.NewReader(data))
-		req.Header.Set("Content-Type", "application/json")
+		r, err = http.NewRequestWithContext(ctx, c.method, urlStr, bytes.NewReader(data))
+		if err == nil {
+			r.Header.Set("Content-Type", "application/json")
+		}
 	}
 
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(r)
 	if err != nil {
 		return err
 	}
@@ -156,30 +192,6 @@ func (c *callout) makeRequest(ctx context.Context, urlStr string, params map[str
 			return errors.NewSDKErrorWithStatus(errors.Wrap(errFailedToRead, err), http.StatusInternalServerError)
 		}
 		return errors.NewSDKErrorWithStatus(errors.New(string(msg)), resp.StatusCode)
-	}
-
-	return nil
-}
-
-func (c *callout) Callout(ctx context.Context, op string, pl map[string]any) error {
-	if len(c.urls) == 0 {
-		return nil
-	}
-
-	// Check if the operation is in the allowed list
-	// Otherwise, only call webhook if the operation is in the map
-	if _, exists := c.allowedOperation[op]; !exists {
-		return nil
-	}
-
-	pl["operation"] = op
-
-	// We iterate through all URLs in sequence
-	// if any request fails, we return the error immediately
-	for _, url := range c.urls {
-		if err := c.makeRequest(ctx, url, pl); err != nil {
-			return err
-		}
 	}
 
 	return nil
