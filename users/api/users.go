@@ -176,7 +176,7 @@ func usersHandler(svc users.Service, authn smqauthn.AuthNMiddleware, tokenClient
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(authn.Middleware())
+		r.Use(authn.WithOptions(smqauthn.WithAllowUnverifiedUser(true)).Middleware())
 		r.Put("/password/reset", otelhttp.NewHandler(kithttp.NewServer(
 			passwordResetEndpoint(svc),
 			decodePasswordReset,
