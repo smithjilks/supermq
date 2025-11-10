@@ -10,6 +10,7 @@ DOCKERS = $(addprefix docker_,$(SERVICES))
 DOCKERS_DEV = $(addprefix docker_dev_,$(SERVICES))
 CGO_ENABLED ?= 0
 GOARCH ?= amd64
+GOOS ?= linux
 VERSION ?= $(shell git describe --abbrev=0 --tags 2>/dev/null || echo 'unknown')
 COMMIT ?= $(shell git rev-parse HEAD)
 TIME ?= $(shell date +%F_%T)
@@ -214,6 +215,15 @@ changelog:
 
 latest: dockers
 	$(call docker_push,latest)
+
+publish_arch:
+	$(MAKE) dockers GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM)
+	for svc in $(SERVICES); do \
+		docker tag $(SMQ_DOCKER_IMAGE_NAME_PREFIX)/$$svc $(SMQ_DOCKER_IMAGE_NAME_PREFIX)/$$svc:$(VERSION)-$(GOARCH); \
+		docker tag $(SMQ_DOCKER_IMAGE_NAME_PREFIX)/$$svc $(SMQ_DOCKER_IMAGE_NAME_PREFIX)/$$svc:latest-$(GOARCH); \
+		docker push $(SMQ_DOCKER_IMAGE_NAME_PREFIX)/$$svc:$(VERSION)-$(GOARCH); \
+		docker push $(SMQ_DOCKER_IMAGE_NAME_PREFIX)/$$svc:latest-$(GOARCH); \
+	done
 
 release:
 	$(eval version = $(shell git describe --abbrev=0 --tags))
