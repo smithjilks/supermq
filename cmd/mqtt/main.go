@@ -329,8 +329,11 @@ func proxyWS(ctx context.Context, cfg config, logger *slog.Logger, sessionHandle
 }
 
 func healthcheck(cfg config) func() error {
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
 	return func() error {
-		res, err := http.Get(cfg.MQTTTargetHealthCheck)
+		res, err := client.Get(cfg.MQTTTargetHealthCheck)
 		if err != nil {
 			return err
 		}

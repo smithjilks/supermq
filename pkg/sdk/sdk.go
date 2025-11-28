@@ -1483,7 +1483,7 @@ func NewSDK(conf Config) SDK {
 		msgContentType: conf.MsgContentType,
 		client: &http.Client{Transport: otelhttp.NewTransport(&http.Transport{
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: !conf.TLSVerification,
 			},
 		})},
 		curlFlag: conf.CurlFlag,

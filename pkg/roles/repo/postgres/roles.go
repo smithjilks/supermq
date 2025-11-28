@@ -18,6 +18,7 @@ import (
 	"github.com/absmach/supermq/pkg/policies"
 	"github.com/absmach/supermq/pkg/postgres"
 	"github.com/absmach/supermq/pkg/roles"
+	"github.com/lib/pq"
 )
 
 var _ roles.Repository = (*Repository)(nil)
@@ -460,23 +461,12 @@ func (repo *Repository) RoleListActions(ctx context.Context, roleID string) ([]s
 }
 
 func (repo *Repository) RoleCheckActionsExists(ctx context.Context, roleID string, actions []string) (bool, error) {
-	q := fmt.Sprintf(`SELECT COUNT(*) FROM %s_role_actions WHERE role_id = :role_id AND action IN ('%s')`, repo.tableNamePrefix, strings.Join(actions, ","))
+	q := fmt.Sprintf(`SELECT COUNT(*) FROM %s_role_actions WHERE role_id = $1 AND action = ANY($2)`, repo.tableNamePrefix)
 
-	params := map[string]any{
-		"role_id": roleID,
-	}
 	var count int
-	query, err := repo.db.NamedQueryContext(ctx, q, params)
+	err := repo.db.QueryRowxContext(ctx, q, roleID, pq.Array(actions)).Scan(&count)
 	if err != nil {
 		return false, errors.Wrap(repoerr.ErrViewEntity, err)
-	}
-
-	defer query.Close()
-
-	if query.Next() {
-		if err := query.Scan(&count); err != nil {
-			return false, errors.Wrap(repoerr.ErrViewEntity, err)
-		}
 	}
 
 	// Check if the count matches the number of actions provided
@@ -638,23 +628,12 @@ func (repo *Repository) RoleListMembers(ctx context.Context, roleID string, limi
 }
 
 func (repo *Repository) RoleCheckMembersExists(ctx context.Context, roleID string, members []string) (bool, error) {
-	q := fmt.Sprintf(`SELECT COUNT(*) FROM %s_role_members WHERE role_id = :role_id AND member_id IN ('%s')`, repo.tableNamePrefix, strings.Join(members, ","))
+	q := fmt.Sprintf(`SELECT COUNT(*) FROM %s_role_members WHERE role_id = $1 AND member_id = ANY($2)`, repo.tableNamePrefix)
 
-	params := map[string]any{
-		"role_id": roleID,
-	}
 	var count int
-	query, err := repo.db.NamedQueryContext(ctx, q, params)
+	err := repo.db.QueryRowxContext(ctx, q, roleID, pq.Array(members)).Scan(&count)
 	if err != nil {
 		return false, errors.Wrap(repoerr.ErrViewEntity, err)
-	}
-
-	defer query.Close()
-
-	if query.Next() {
-		if err := query.Scan(&count); err != nil {
-			return false, errors.Wrap(repoerr.ErrViewEntity, err)
-		}
 	}
 
 	if count != len(members) {

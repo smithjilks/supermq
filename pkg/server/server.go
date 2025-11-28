@@ -26,12 +26,17 @@ type Server interface {
 
 // Config is a struct that contains the configuration for the server.
 type Config struct {
-	Host         string `env:"HOST"            envDefault:"localhost"`
-	Port         string `env:"PORT"            envDefault:""`
-	CertFile     string `env:"SERVER_CERT"     envDefault:""`
-	KeyFile      string `env:"SERVER_KEY"      envDefault:""`
-	ServerCAFile string `env:"SERVER_CA_CERTS" envDefault:""`
-	ClientCAFile string `env:"CLIENT_CA_CERTS" envDefault:""`
+	Host              string        `env:"HOST"                       envDefault:"localhost"`
+	Port              string        `env:"PORT"                       envDefault:""`
+	CertFile          string        `env:"SERVER_CERT"                envDefault:""`
+	KeyFile           string        `env:"SERVER_KEY"                 envDefault:""`
+	ServerCAFile      string        `env:"SERVER_CA_CERTS"            envDefault:""`
+	ClientCAFile      string        `env:"CLIENT_CA_CERTS"            envDefault:""`
+	ReadTimeout       time.Duration `env:"SERVER_READ_TIMEOUT"        envDefault:"15s"`
+	WriteTimeout      time.Duration `env:"SERVER_WRITE_TIMEOUT"       envDefault:"15s"`
+	ReadHeaderTimeout time.Duration `env:"SERVER_READ_HEADER_TIMEOUT" envDefault:"5s"`
+	IdleTimeout       time.Duration `env:"SERVER_IDLE_TIMEOUT"        envDefault:"60s"`
+	MaxHeaderBytes    int           `env:"SERVER_MAX_HEADER_BYTES"    envDefault:"1048576"` // 1 << 20
 }
 
 type BaseServer struct {

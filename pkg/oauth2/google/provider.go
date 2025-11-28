@@ -30,6 +30,10 @@ var scopes = []string{
 	"https://www.googleapis.com/auth/userinfo.profile",
 }
 
+var httpClient = &http.Client{
+	Timeout: defTimeout,
+}
+
 var _ mgoauth2.Provider = (*config)(nil)
 
 type config struct {
@@ -85,7 +89,7 @@ func (cfg *config) Exchange(ctx context.Context, code string) (oauth2.Token, err
 }
 
 func (cfg *config) UserInfo(accessToken string) (uclient.User, error) {
-	resp, err := http.Get(userInfoURL + url.QueryEscape(accessToken))
+	resp, err := httpClient.Get(userInfoURL + url.QueryEscape(accessToken))
 	if err != nil {
 		return uclient.User{}, err
 	}

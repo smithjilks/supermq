@@ -27,7 +27,15 @@ var _ server.Server = (*httpServer)(nil)
 
 func NewServer(ctx context.Context, cancel context.CancelFunc, name string, config server.Config, handler http.Handler, logger *slog.Logger) server.Server {
 	baseServer := server.NewBaseServer(ctx, cancel, name, config, logger)
-	hserver := &http.Server{Addr: baseServer.Address, Handler: handler}
+	hserver := &http.Server{
+		Addr:              baseServer.Address,
+		Handler:           handler,
+		ReadTimeout:       config.ReadTimeout,
+		WriteTimeout:      config.WriteTimeout,
+		ReadHeaderTimeout: config.ReadHeaderTimeout,
+		IdleTimeout:       config.IdleTimeout,
+		MaxHeaderBytes:    config.MaxHeaderBytes,
+	}
 
 	return &httpServer{
 		BaseServer: baseServer,
