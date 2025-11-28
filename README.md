@@ -4,7 +4,7 @@
   
   **Planetary event-driven infrastructure**
   
-  **Made with ❤️ by [Abstract Machines](https://abstractmachines.fr/)**
+  **Made with ❤️ by [Abstract Machines](https://absmach.eu/)**
   
   [![Build Status](https://github.com/absmach/supermq/actions/workflows/build.yaml/badge.svg?branch=main)](https://github.com/absmach/supermq/actions/workflows/build.yaml)
   [![Check License Header](https://github.com/absmach/supermq/actions/workflows/check-license.yaml/badge.svg?branch=main)](https://github.com/absmach/supermq/actions/workflows/check-license.yaml)
@@ -14,7 +14,7 @@
   [![License](https://img.shields.io/badge/license-Apache%20v2.0-blue.svg)](LICENSE)
  [![Matrix](https://img.shields.io/matrix/supermq%3Amatrix.org?label=Chat&style=flat&logo=matrix&logoColor=white)](https://matrix.to/#/#supermq:matrix.org)
   
-  ### [Guide](https://docs.supermq.abstractmachines.fr) | [Contributing](CONTRIBUTING.md) | [Website](https://abstractmachines.fr/) | [Chat](https://matrix.to/#/#supermq:matrix.org)
+  ### [Guide](https://docs.supermq.absmach.eu) | [Contributing](CONTRIBUTING.md) | [Website](https://absmach.eu/) | [Chat](https://matrix.to/#/#supermq:matrix.org)
 
 </div>
 
@@ -104,7 +104,7 @@ Join our community:
 
 ## Professional Support 💼
 
-Need help deploying SuperMQ or integrating it into your system? Reach out to **[Abstract Machines](https://abstractmachines.fr/)** for professional support and guidance.
+Need help deploying SuperMQ or integrating it into your system? Reach out to **[Abstract Machines](https://absmach.eu/)** for professional support and guidance.
 
 ## License 📜
 
