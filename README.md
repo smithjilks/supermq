@@ -7,13 +7,14 @@
   **Made with ❤️ by [Abstract Machines](https://absmach.eu/)**
   
   [![Build Status](https://github.com/absmach/supermq/actions/workflows/build.yaml/badge.svg?branch=main)](https://github.com/absmach/supermq/actions/workflows/build.yaml)
+  [![Go Report Card](https://goreportcard.com/badge/github.com/absmach/supermq)](https://goreportcard.com/report/github.com/absmach/supermq)
+  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/absmach/supermq)
   [![Check License Header](https://github.com/absmach/supermq/actions/workflows/check-license.yaml/badge.svg?branch=main)](https://github.com/absmach/supermq/actions/workflows/check-license.yaml)
   [![Check Generated Files](https://github.com/absmach/supermq/actions/workflows/check-generated-files.yaml/badge.svg?branch=main)](https://github.com/absmach/supermq/actions/workflows/check-generated-files.yaml)
-  [![Go Report Card](https://goreportcard.com/badge/github.com/absmach/supermq)](https://goreportcard.com/report/github.com/absmach/supermq)
   [![Coverage](https://codecov.io/gh/absmach/supermq/graph/badge.svg?token=nPCEr5nW8S)](https://codecov.io/gh/absmach/supermq)
   [![License](https://img.shields.io/badge/license-Apache%20v2.0-blue.svg)](LICENSE)
  [![Matrix](https://img.shields.io/matrix/supermq%3Amatrix.org?label=Chat&style=flat&logo=matrix&logoColor=white)](https://matrix.to/#/#supermq:matrix.org)
-  
+
   ### [Guide](https://docs.supermq.absmach.eu) | [Contributing](CONTRIBUTING.md) | [Website](https://absmach.eu/) | [Chat](https://matrix.to/#/#supermq:matrix.org)
 
 </div>
