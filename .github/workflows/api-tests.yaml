@@ -4,7 +4,7 @@
 name: Property Based Tests
 
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths:
@@ -18,6 +18,11 @@ on:
       - "http/api/**"
       - "journal/api/**"
       - "users/api/**"
+      - "apidocs/openapi/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   TOKENS_URL: http://localhost:9002/users/tokens/issue
@@ -40,6 +45,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Install Go
         uses: actions/setup-go@v6
@@ -47,11 +54,67 @@ jobs:
           go-version: 1.25.x
           cache-dependency-path: "go.sum"
 
+      - name: Check for changes in specific paths
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          base: main
+          filters: |
+            workflow:
+              - ".github/workflows/api-tests.yaml"
+
+            journal:
+              - "apidocs/openapi/journal.yaml"
+              - "journal/api/**"
+
+            auth:
+              - "apidocs/openapi/auth.yaml"
+              - "auth/api/http/**"
+
+            domains:
+              - "apidocs/openapi/domains.yaml"
+              - "domains/api/http/**"
+
+            http:
+              - "apidocs/openapi/http.yaml"
+              - "http/api/**"
+
+            clients:
+              - "apidocs/openapi/clients.yaml"
+              - "clients/api/http/**"
+
+            channels:
+              - "apidocs/openapi/channels.yaml"
+              - "channels/api/http/**"
+
+            groups:
+              - "apidocs/openapi/groups.yaml"
+              - "groups/api/http/**"
+
+            users:
+              - "apidocs/openapi/users.yaml"
+              - "users/api/**"
+
       - name: Build images
         run: make all -j $(nproc) && make dockers_dev -j $(nproc)
 
       - name: Start containers
         run: make run up args="-d" && make run_addons up args="-d"
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start..."
+          sleep 15
+
+          # Check if services are responding
+          for i in {1..30}; do
+            if curl -f -s http://localhost:9002/health > /dev/null 2>&1; then
+              echo "Services are ready!"
+              break
+            fi
+            echo "Waiting for services... ($i/30)"
+            sleep 2
+          done
 
       - name: Set access token
         run: |
@@ -61,53 +124,8 @@ jobs:
           export CLIENT_SECRET=$(supermq-cli provision test | /usr/bin/grep -Eo '"secret": "[^"]+"' | awk 'NR % 2 == 0' | sed 's/"secret": "\(.*\)"/\1/')
           echo "CLIENT_SECRET=$CLIENT_SECRET" >> $GITHUB_ENV
 
-      - name: Check for changes in specific paths
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            journal:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/journal.yaml"
-              - "journal/api/**"
-
-            auth:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/auth.yaml"
-              - "auth/api/http/**"
-
-            domains:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/domains.yaml"
-              - "domains/api/http/**"
-
-            http:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/http.yaml"
-              - "http/api/**"
-
-            clients:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/clients.yaml"
-              - "clients/api/http/**"
-
-            channels:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/channels.yaml"
-              - "channels/api/http/**"
-
-            groups:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/groups.yaml"
-              - "groups/api/http/**"
-
-            users:
-              - ".github/workflows/api-tests.yaml"
-              - "apidocs/openapi/users.yaml"
-              - "users/api/**"
-
       - name: Run Users API tests
-        if: steps.changes.outputs.users == 'true'
+        if: steps.changes.outputs.users == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/users.yaml
@@ -116,7 +134,7 @@ jobs:
           args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --exclude-operation-id=requestPasswordReset --phases=examples,stateful'
 
       - name: Run Groups API tests
-        if: steps.changes.outputs.groups == 'true'
+        if: steps.changes.outputs.groups == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/groups.yaml
@@ -125,7 +143,7 @@ jobs:
           args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --phases=examples'
 
       - name: Run Clients API tests
-        if: steps.changes.outputs.clients == 'true'
+        if: steps.changes.outputs.clients == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/clients.yaml
@@ -134,7 +152,7 @@ jobs:
           args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --phases=examples'
 
       - name: Run Channels API tests
-        if: steps.changes.outputs.channels == 'true'
+        if: steps.changes.outputs.channels == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/channels.yaml
@@ -143,7 +161,7 @@ jobs:
           args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --phases=examples'
 
       - name: Run HTTP Adapter API tests
-        if: steps.changes.outputs.http == 'true'
+        if: steps.changes.outputs.http == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/http.yaml
@@ -152,7 +170,7 @@ jobs:
           args: '--header "Authorization: Client ${{ env.CLIENT_SECRET }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --phases=examples'
 
       - name: Run Auth API tests
-        if: steps.changes.outputs.auth == 'true'
+        if: steps.changes.outputs.auth == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/auth.yaml
@@ -161,7 +179,7 @@ jobs:
           args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --phases=examples'
 
       - name: Run Domains API tests
-        if: steps.changes.outputs.domains == 'true'
+        if: steps.changes.outputs.domains == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/domains.yaml
@@ -170,7 +188,7 @@ jobs:
           args: '--header "Authorization: Bearer ${{ env.USER_TOKEN }}" --suppress-health-check=filter_too_much --exclude-checks=positive_data_acceptance --phases=examples'
 
       - name: Run Journal API tests
-        if: steps.changes.outputs.journal == 'true'
+        if: steps.changes.outputs.journal == 'true' || steps.changes.outputs.workflow == 'true'
         uses: schemathesis/action@v2.1.0
         with:
           schema: apidocs/openapi/journal.yaml
