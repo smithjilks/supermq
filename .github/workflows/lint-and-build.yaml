@@ -23,7 +23,7 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.4.0
+          version: v2.7.2
           args: --config ./tools/config/.golangci.yaml
 
   build:
