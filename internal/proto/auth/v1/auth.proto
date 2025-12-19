@@ -10,9 +10,7 @@ option go_package = "github.com/absmach/supermq/api/grpc/auth/v1";
 // and authorization functionalities for SuperMQ services.
 service AuthService {
   rpc Authorize(AuthZReq) returns (AuthZRes) {}
-  rpc AuthorizePAT(AuthZPatReq) returns (AuthZRes) {}
   rpc Authenticate(AuthNReq) returns (AuthNRes) {}
-  rpc AuthenticatePAT(AuthNReq) returns (AuthNRes) {}
 }
 
 
@@ -21,31 +19,40 @@ message AuthNReq {
 }
 
 message AuthNRes {
-  string id    = 1;     // token id
-  string user_id = 2;   // user id
-  uint32 user_role = 3; // user role
-  bool verified = 4; // verified user
+  string id    = 1;       // token id
+  string user_id = 2;     // user id
+  uint32 user_role = 3;   // user role
+  bool verified = 4;      // verified user
+  uint32 token_type = 5;  // token type
+}
+
+message PolicyReq {
+  uint32 token_type = 1;          // Token type
+  string domain = 2;              // Domain
+  string subject_type = 3;        // Client or User
+  string subject_kind = 4;        // ID or Token
+  string subject_relation = 5;    // Subject relation
+  string subject = 6;             // Subject value
+  string relation = 7;            // Relation to filter
+  string permission = 8;          // Action
+  string object = 9;              // Object ID
+  string object_type = 10;        // Client, User, Group
+}
+
+message PATReq {
+  string user_id = 1;             // User id (PAT)
+  string pat_id = 2;              // Pat id
+  uint32 entity_type = 3;         // Entity type (PAT)
+  string optional_domain_id = 4;  // Optional domain id (PAT)
+  uint32 operation = 5;           // Operation (PAT)
+  string entity_id = 6;           // EntityID (PAT)
 }
 
 message AuthZReq {
-  string domain = 1;           // Domain
-  string subject_type = 2;     // Client or User
-  string subject_kind = 3;     // ID or Token
-  string subject_relation = 4; // Subject relation
-  string subject = 5;          // Subject value (id or token, depending on kind)
-  string relation = 6;         // Relation to filter
-  string permission = 7;       // Action
-  string object = 8;           // Object ID
-  string object_type = 9;      // Client, User, Group
-}
-
-message AuthZPatReq {
-  string user_id = 1;             // User id
-  string pat_id = 2;              // Pat id
-  uint32 entity_type = 3;         // Entity type
-  string optional_domain_id = 4;  // Optional domain id
-  uint32 operation = 6;           // Operation
-  string entity_id = 7;           // EntityID
+  oneof auth_type {
+    PolicyReq policy = 1;         // Policy-based authorization
+    PATReq pat = 2;               // PAT authorization
+  }
 }
 
 message AuthZRes {

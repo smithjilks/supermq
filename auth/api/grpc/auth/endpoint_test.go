@@ -25,25 +25,14 @@ import (
 
 const (
 	port            = 8081
-	secret          = "secret"
-	email           = "test@example.com"
 	id              = "testID"
-	clientsType     = "clients"
 	usersType       = "users"
-	description     = "Description"
-	groupName       = "smqx"
 	adminPermission = "admin"
-
 	authoritiesObj  = "authorities"
 	memberRelation  = "member"
-	loginDuration   = 30 * time.Minute
-	refreshDuration = 24 * time.Hour
-	invalidDuration = 7 * 24 * time.Hour
 	validToken      = "valid"
 	inValidToken    = "invalid"
 	validPATToken   = "valid"
-	inValidPATToken = "invalid"
-	validPolicy     = "valid"
 )
 
 var (
@@ -73,6 +62,7 @@ func TestIdentify(t *testing.T) {
 	cases := []struct {
 		desc   string
 		token  string
+		key    auth.Key
 		idt    *grpcAuthV1.AuthNRes
 		svcErr error
 		err    error
@@ -80,12 +70,14 @@ func TestIdentify(t *testing.T) {
 		{
 			desc:  "authenticate user with valid user token",
 			token: validToken,
+			key:   auth.Key{ID: "", Subject: id, Role: auth.UserRole},
 			idt:   &grpcAuthV1.AuthNRes{UserId: id, UserRole: uint32(auth.UserRole)},
 			err:   nil,
 		},
 		{
 			desc:   "authenticate user with invalid user token",
 			token:  "invalid",
+			key:    auth.Key{},
 			idt:    &grpcAuthV1.AuthNRes{},
 			svcErr: svcerr.ErrAuthentication,
 			err:    svcerr.ErrAuthentication,
@@ -96,11 +88,26 @@ func TestIdentify(t *testing.T) {
 			idt:   &grpcAuthV1.AuthNRes{},
 			err:   apiutil.ErrBearerToken,
 		},
+		{
+			desc:  "authenticate user with valid PAT token",
+			token: "pat_" + validPATToken,
+			key:   auth.Key{ID: id, Type: auth.PersonalAccessToken, Subject: clientID, Role: auth.UserRole},
+			idt:   &grpcAuthV1.AuthNRes{Id: id, UserId: clientID, UserRole: uint32(auth.UserRole)},
+			err:   nil,
+		},
+		{
+			desc:   "authenticate user with invalid PAT token",
+			token:  "pat_invalid",
+			key:    auth.Key{},
+			idt:    &grpcAuthV1.AuthNRes{},
+			svcErr: svcerr.ErrAuthentication,
+			err:    svcerr.ErrAuthentication,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
-			svcCall := svc.On("Identify", mock.Anything, mock.Anything).Return(auth.Key{Subject: id, Role: auth.UserRole}, tc.svcErr)
+			svcCall := svc.On("Identify", mock.Anything, tc.token).Return(tc.key, tc.svcErr)
 			idt, err := grpcClient.Authenticate(context.Background(), &grpcAuthV1.AuthNReq{Token: tc.token})
 			if idt != nil {
 				assert.Equal(t, tc.idt, idt, fmt.Sprintf("%s: expected %v got %v", tc.desc, tc.idt, idt))
@@ -129,12 +136,16 @@ func TestAuthorize(t *testing.T) {
 			desc:  "authorize user with authorized token",
 			token: validToken,
 			authRequest: &grpcAuthV1.AuthZReq{
-				Subject:     id,
-				SubjectType: usersType,
-				Object:      authoritiesObj,
-				ObjectType:  usersType,
-				Relation:    memberRelation,
-				Permission:  adminPermission,
+				AuthType: &grpcAuthV1.AuthZReq_Policy{
+					Policy: &grpcAuthV1.PolicyReq{
+						Subject:     id,
+						SubjectType: usersType,
+						Object:      authoritiesObj,
+						ObjectType:  usersType,
+						Relation:    memberRelation,
+						Permission:  adminPermission,
+					},
+				},
 			},
 			authResponse: &grpcAuthV1.AuthZRes{Authorized: true},
 			err:          nil,
@@ -143,12 +154,16 @@ func TestAuthorize(t *testing.T) {
 			desc:  "authorize user with unauthorized token",
 			token: inValidToken,
 			authRequest: &grpcAuthV1.AuthZReq{
-				Subject:     id,
-				SubjectType: usersType,
-				Object:      authoritiesObj,
-				ObjectType:  usersType,
-				Relation:    memberRelation,
-				Permission:  adminPermission,
+				AuthType: &grpcAuthV1.AuthZReq_Policy{
+					Policy: &grpcAuthV1.PolicyReq{
+						Subject:     id,
+						SubjectType: usersType,
+						Object:      authoritiesObj,
+						ObjectType:  usersType,
+						Relation:    memberRelation,
+						Permission:  adminPermission,
+					},
+				},
 			},
 			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
 			err:          svcerr.ErrAuthorization,
@@ -157,12 +172,16 @@ func TestAuthorize(t *testing.T) {
 			desc:  "authorize user with empty subject",
 			token: validToken,
 			authRequest: &grpcAuthV1.AuthZReq{
-				Subject:     "",
-				SubjectType: usersType,
-				Object:      authoritiesObj,
-				ObjectType:  usersType,
-				Relation:    memberRelation,
-				Permission:  adminPermission,
+				AuthType: &grpcAuthV1.AuthZReq_Policy{
+					Policy: &grpcAuthV1.PolicyReq{
+						Subject:     "",
+						SubjectType: usersType,
+						Object:      authoritiesObj,
+						ObjectType:  usersType,
+						Relation:    memberRelation,
+						Permission:  adminPermission,
+					},
+				},
 			},
 			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
 			err:          apiutil.ErrMissingPolicySub,
@@ -171,12 +190,16 @@ func TestAuthorize(t *testing.T) {
 			desc:  "authorize user with empty subject type",
 			token: validToken,
 			authRequest: &grpcAuthV1.AuthZReq{
-				Subject:     id,
-				SubjectType: "",
-				Object:      authoritiesObj,
-				ObjectType:  usersType,
-				Relation:    memberRelation,
-				Permission:  adminPermission,
+				AuthType: &grpcAuthV1.AuthZReq_Policy{
+					Policy: &grpcAuthV1.PolicyReq{
+						Subject:     id,
+						SubjectType: "",
+						Object:      authoritiesObj,
+						ObjectType:  usersType,
+						Relation:    memberRelation,
+						Permission:  adminPermission,
+					},
+				},
 			},
 			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
 			err:          apiutil.ErrMissingPolicySub,
@@ -185,12 +208,16 @@ func TestAuthorize(t *testing.T) {
 			desc:  "authorize user with empty object",
 			token: validToken,
 			authRequest: &grpcAuthV1.AuthZReq{
-				Subject:     id,
-				SubjectType: usersType,
-				Object:      "",
-				ObjectType:  usersType,
-				Relation:    memberRelation,
-				Permission:  adminPermission,
+				AuthType: &grpcAuthV1.AuthZReq_Policy{
+					Policy: &grpcAuthV1.PolicyReq{
+						Subject:     id,
+						SubjectType: usersType,
+						Object:      "",
+						ObjectType:  usersType,
+						Relation:    memberRelation,
+						Permission:  adminPermission,
+					},
+				},
 			},
 			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
 			err:          apiutil.ErrMissingPolicyObj,
@@ -199,12 +226,16 @@ func TestAuthorize(t *testing.T) {
 			desc:  "authorize user with empty object type",
 			token: validToken,
 			authRequest: &grpcAuthV1.AuthZReq{
-				Subject:     id,
-				SubjectType: usersType,
-				Object:      authoritiesObj,
-				ObjectType:  "",
-				Relation:    memberRelation,
-				Permission:  adminPermission,
+				AuthType: &grpcAuthV1.AuthZReq_Policy{
+					Policy: &grpcAuthV1.PolicyReq{
+						Subject:     id,
+						SubjectType: usersType,
+						Object:      authoritiesObj,
+						ObjectType:  "",
+						Relation:    memberRelation,
+						Permission:  adminPermission,
+					},
+				},
 			},
 			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
 			err:          apiutil.ErrMissingPolicyObj,
@@ -213,157 +244,95 @@ func TestAuthorize(t *testing.T) {
 			desc:  "authorize user with empty permission",
 			token: validToken,
 			authRequest: &grpcAuthV1.AuthZReq{
-				Subject:     id,
-				SubjectType: usersType,
-				Object:      authoritiesObj,
-				ObjectType:  usersType,
-				Relation:    memberRelation,
-				Permission:  "",
+				AuthType: &grpcAuthV1.AuthZReq_Policy{
+					Policy: &grpcAuthV1.PolicyReq{
+						Subject:     id,
+						SubjectType: usersType,
+						Object:      authoritiesObj,
+						ObjectType:  usersType,
+						Relation:    memberRelation,
+						Permission:  "",
+					},
+				},
 			},
 			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
 			err:          apiutil.ErrMalformedPolicyPer,
+		},
+		{
+			desc:  "authorize user with valid PAT token",
+			token: validPATToken,
+			authRequest: &grpcAuthV1.AuthZReq{
+				AuthType: &grpcAuthV1.AuthZReq_Pat{
+					Pat: &grpcAuthV1.PATReq{
+						UserId:           id,
+						PatId:            id,
+						EntityType:       uint32(auth.ClientsType),
+						OptionalDomainId: domainID,
+						Operation:        uint32(auth.CreateOp),
+						EntityId:         clientID,
+					},
+				},
+			},
+			authResponse: &grpcAuthV1.AuthZRes{Authorized: true},
+			err:          nil,
+		},
+		{
+			desc:  "authorize user with unauthorized PAT token",
+			token: inValidToken,
+			authRequest: &grpcAuthV1.AuthZReq{
+				AuthType: &grpcAuthV1.AuthZReq_Pat{
+					Pat: &grpcAuthV1.PATReq{
+						UserId:           id,
+						PatId:            id,
+						EntityType:       uint32(auth.ClientsType),
+						OptionalDomainId: domainID,
+						Operation:        uint32(auth.CreateOp),
+						EntityId:         clientID,
+					},
+				},
+			},
+			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
+			err:          svcerr.ErrAuthorization,
+		},
+		{
+			desc:  "authorize PAT with missing user id",
+			token: validPATToken,
+			authRequest: &grpcAuthV1.AuthZReq{
+				AuthType: &grpcAuthV1.AuthZReq_Pat{
+					Pat: &grpcAuthV1.PATReq{
+						PatId:            id,
+						EntityType:       uint32(auth.ClientsType),
+						OptionalDomainId: domainID,
+						Operation:        uint32(auth.CreateOp),
+						EntityId:         clientID,
+					},
+				},
+			},
+			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
+			err:          apiutil.ErrMissingUserID,
+		},
+		{
+			desc:  "authorize PAT with missing entity id",
+			token: validPATToken,
+			authRequest: &grpcAuthV1.AuthZReq{
+				AuthType: &grpcAuthV1.AuthZReq_Pat{
+					Pat: &grpcAuthV1.PATReq{
+						UserId:           id,
+						PatId:            id,
+						EntityType:       uint32(auth.ClientsType),
+						OptionalDomainId: domainID,
+						Operation:        uint32(auth.CreateOp),
+					},
+				},
+			},
+			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
+			err:          apiutil.ErrMissingID,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			svcCall := svc.On("Authorize", mock.Anything, mock.Anything).Return(tc.err)
 			ar, err := grpcClient.Authorize(context.Background(), tc.authRequest)
-			if ar != nil {
-				assert.Equal(t, tc.authResponse, ar, fmt.Sprintf("%s: expected %v got %v", tc.desc, tc.authResponse, ar))
-			}
-			assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
-			svcCall.Unset()
-		})
-	}
-}
-
-func TestIdentifyPAT(t *testing.T) {
-	conn, err := grpc.NewClient(authAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	assert.Nil(t, err, fmt.Sprintf("Unexpected error creating client connection %s", err))
-	defer conn.Close()
-	grpcClient := grpcapi.NewAuthClient(conn, time.Second)
-
-	cases := []struct {
-		desc   string
-		token  string
-		idt    *grpcAuthV1.AuthNRes
-		svcErr error
-		err    error
-	}{
-		{
-			desc:  "authenticate user with valid user token",
-			token: validToken,
-			idt:   &grpcAuthV1.AuthNRes{Id: id, UserId: clientID},
-			err:   nil,
-		},
-		{
-			desc:   "authenticate user with invalid user token",
-			token:  "invalid",
-			idt:    &grpcAuthV1.AuthNRes{},
-			svcErr: svcerr.ErrAuthentication,
-			err:    svcerr.ErrAuthentication,
-		},
-		{
-			desc:  "authenticate user with empty token",
-			token: "",
-			idt:   &grpcAuthV1.AuthNRes{},
-			err:   apiutil.ErrBearerToken,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.desc, func(t *testing.T) {
-			svcCall := svc.On("IdentifyPAT", mock.Anything, tc.token).Return(auth.PAT{ID: id, User: clientID, IssuedAt: time.Now()}, tc.svcErr)
-			idt, err := grpcClient.AuthenticatePAT(context.Background(), &grpcAuthV1.AuthNReq{Token: tc.token})
-			if idt != nil {
-				assert.Equal(t, tc.idt, idt, fmt.Sprintf("%s: expected %v got %v", tc.desc, tc.idt, idt))
-			}
-			assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
-			svcCall.Unset()
-		})
-	}
-}
-
-func TestAuthorizePAT(t *testing.T) {
-	conn, err := grpc.NewClient(authAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	assert.Nil(t, err, fmt.Sprintf("Unexpected error creating client connection %s", err))
-	defer conn.Close()
-
-	grpcClient := grpcapi.NewAuthClient(conn, time.Second)
-	cases := []struct {
-		desc         string
-		token        string
-		authRequest  *grpcAuthV1.AuthZPatReq
-		authResponse *grpcAuthV1.AuthZRes
-		err          error
-	}{
-		{
-			desc:  "authorize user with authorized token",
-			token: validPATToken,
-			authRequest: &grpcAuthV1.AuthZPatReq{
-				UserId:           id,
-				PatId:            id,
-				EntityType:       uint32(auth.ClientsType),
-				OptionalDomainId: domainID,
-				Operation:        uint32(auth.CreateOp),
-				EntityId:         clientID,
-			},
-			authResponse: &grpcAuthV1.AuthZRes{Authorized: true},
-			err:          nil,
-		},
-		{
-			desc:  "authorize user with unauthorized token",
-			token: inValidPATToken,
-			authRequest: &grpcAuthV1.AuthZPatReq{
-				UserId:           id,
-				PatId:            id,
-				EntityType:       uint32(auth.ClientsType),
-				OptionalDomainId: domainID,
-				Operation:        uint32(auth.CreateOp),
-				EntityId:         clientID,
-			},
-			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
-			err:          svcerr.ErrAuthorization,
-		},
-		{
-			desc:  "authorize user with missing user id",
-			token: validPATToken,
-			authRequest: &grpcAuthV1.AuthZPatReq{
-				PatId:            id,
-				EntityType:       uint32(auth.ClientsType),
-				OptionalDomainId: domainID,
-				Operation:        uint32(auth.CreateOp),
-				EntityId:         clientID,
-			},
-			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
-			err:          apiutil.ErrMissingUserID,
-		},
-		{
-			desc:  "authorize user with missing pat id",
-			token: validPATToken,
-			authRequest: &grpcAuthV1.AuthZPatReq{
-				UserId:           id,
-				EntityType:       uint32(auth.ClientsType),
-				OptionalDomainId: domainID,
-				Operation:        uint32(auth.CreateOp),
-				EntityId:         clientID,
-			},
-			authResponse: &grpcAuthV1.AuthZRes{Authorized: false},
-			err:          apiutil.ErrMissingPATID,
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.desc, func(t *testing.T) {
-			svcCall := svc.On("AuthorizePAT",
-				mock.Anything,
-				tc.authRequest.UserId,
-				tc.authRequest.PatId,
-				mock.Anything,
-				tc.authRequest.OptionalDomainId,
-				mock.Anything,
-				mock.Anything,
-				mock.Anything).Return(tc.err)
-			ar, err := grpcClient.AuthorizePAT(context.Background(), tc.authRequest)
 			if ar != nil {
 				assert.Equal(t, tc.authResponse, ar, fmt.Sprintf("%s: expected %v got %v", tc.desc, tc.authResponse, ar))
 			}

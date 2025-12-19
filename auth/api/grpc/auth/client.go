@@ -18,11 +18,9 @@ import (
 const authSvcName = "auth.v1.AuthService"
 
 type authGrpcClient struct {
-	authenticate    endpoint.Endpoint
-	authenticatePAT endpoint.Endpoint
-	authorize       endpoint.Endpoint
-	authorizePAT    endpoint.Endpoint
-	timeout         time.Duration
+	authenticate endpoint.Endpoint
+	authorize    endpoint.Endpoint
+	timeout      time.Duration
 }
 
 var _ grpcAuthV1.AuthServiceClient = (*authGrpcClient)(nil)
@@ -38,27 +36,11 @@ func NewAuthClient(conn *grpc.ClientConn, timeout time.Duration) grpcAuthV1.Auth
 			decodeIdentifyResponse,
 			grpcAuthV1.AuthNRes{},
 		).Endpoint(),
-		authenticatePAT: kitgrpc.NewClient(
-			conn,
-			authSvcName,
-			"AuthenticatePAT",
-			encodeIdentifyRequest,
-			decodeIdentifyPATResponse,
-			grpcAuthV1.AuthNRes{},
-		).Endpoint(),
 		authorize: kitgrpc.NewClient(
 			conn,
 			authSvcName,
 			"Authorize",
 			encodeAuthorizeRequest,
-			decodeAuthorizeResponse,
-			grpcAuthV1.AuthZRes{},
-		).Endpoint(),
-		authorizePAT: kitgrpc.NewClient(
-			conn,
-			authSvcName,
-			"AuthorizePAT",
-			encodeAuthorizePATRequest,
 			decodeAuthorizeResponse,
 			grpcAuthV1.AuthZRes{},
 		).Endpoint(),
@@ -88,37 +70,36 @@ func decodeIdentifyResponse(_ context.Context, grpcRes any) (any, error) {
 	return authenticateRes{id: res.GetId(), userID: res.GetUserId(), userRole: auth.Role(res.UserRole), verified: res.GetVerified()}, nil
 }
 
-func (client authGrpcClient) AuthenticatePAT(ctx context.Context, token *grpcAuthV1.AuthNReq, _ ...grpc.CallOption) (*grpcAuthV1.AuthNRes, error) {
-	ctx, cancel := context.WithTimeout(ctx, client.timeout)
-	defer cancel()
-
-	res, err := client.authenticatePAT(ctx, authenticateReq{token: token.GetToken()})
-	if err != nil {
-		return &grpcAuthV1.AuthNRes{}, grpcapi.DecodeError(err)
-	}
-	ir := res.(authenticateRes)
-	return &grpcAuthV1.AuthNRes{Id: ir.id, UserId: ir.userID, UserRole: uint32(ir.userRole)}, nil
-}
-
-func decodeIdentifyPATResponse(_ context.Context, grpcRes any) (any, error) {
-	res := grpcRes.(*grpcAuthV1.AuthNRes)
-	return authenticateRes{id: res.GetId(), userID: res.GetUserId(), userRole: auth.Role(res.UserRole)}, nil
-}
-
 func (client authGrpcClient) Authorize(ctx context.Context, req *grpcAuthV1.AuthZReq, _ ...grpc.CallOption) (r *grpcAuthV1.AuthZRes, err error) {
 	ctx, cancel := context.WithTimeout(ctx, client.timeout)
 	defer cancel()
 
-	res, err := client.authorize(ctx, authReq{
-		Domain:      req.GetDomain(),
-		SubjectType: req.GetSubjectType(),
-		Subject:     req.GetSubject(),
-		SubjectKind: req.GetSubjectKind(),
-		Relation:    req.GetRelation(),
-		Permission:  req.GetPermission(),
-		ObjectType:  req.GetObjectType(),
-		Object:      req.GetObject(),
-	})
+	var authReqData authReq
+
+	if policy := req.GetPolicy(); policy != nil {
+		authReqData = authReq{
+			TokenType:   policy.GetTokenType(),
+			Domain:      policy.GetDomain(),
+			SubjectType: policy.GetSubjectType(),
+			Subject:     policy.GetSubject(),
+			SubjectKind: policy.GetSubjectKind(),
+			Relation:    policy.GetRelation(),
+			Permission:  policy.GetPermission(),
+			ObjectType:  policy.GetObjectType(),
+			Object:      policy.GetObject(),
+		}
+	} else if pat := req.GetPat(); pat != nil {
+		authReqData = authReq{
+			UserID:           pat.GetUserId(),
+			PatID:            pat.GetPatId(),
+			EntityType:       auth.EntityType(pat.GetEntityType()),
+			OptionalDomainID: pat.GetOptionalDomainId(),
+			Operation:        auth.Operation(pat.GetOperation()),
+			EntityID:         pat.GetEntityId(),
+		}
+	}
+
+	res, err := client.authorize(ctx, authReqData)
 	if err != nil {
 		return &grpcAuthV1.AuthZRes{}, grpcapi.DecodeError(err)
 	}
@@ -134,46 +115,37 @@ func decodeAuthorizeResponse(_ context.Context, grpcRes any) (any, error) {
 
 func encodeAuthorizeRequest(_ context.Context, grpcReq any) (any, error) {
 	req := grpcReq.(authReq)
-	return &grpcAuthV1.AuthZReq{
-		Domain:      req.Domain,
-		SubjectType: req.SubjectType,
-		Subject:     req.Subject,
-		SubjectKind: req.SubjectKind,
-		Relation:    req.Relation,
-		Permission:  req.Permission,
-		ObjectType:  req.ObjectType,
-		Object:      req.Object,
-	}, nil
-}
 
-func (client authGrpcClient) AuthorizePAT(ctx context.Context, req *grpcAuthV1.AuthZPatReq, _ ...grpc.CallOption) (r *grpcAuthV1.AuthZRes, err error) {
-	ctx, cancel := context.WithTimeout(ctx, client.timeout)
-	defer cancel()
-
-	res, err := client.authorizePAT(ctx, authPATReq{
-		userID:           req.GetUserId(),
-		patID:            req.GetPatId(),
-		entityType:       auth.EntityType(req.GetEntityType()),
-		optionalDomainID: req.GetOptionalDomainId(),
-		operation:        auth.Operation(req.GetOperation()),
-		entityID:         req.GetEntityId(),
-	})
-	if err != nil {
-		return &grpcAuthV1.AuthZRes{}, grpcapi.DecodeError(err)
+	// Check if this is a PAT request (has PatID) or policy request
+	if req.PatID != "" {
+		return &grpcAuthV1.AuthZReq{
+			AuthType: &grpcAuthV1.AuthZReq_Pat{
+				Pat: &grpcAuthV1.PATReq{
+					UserId:           req.UserID,
+					PatId:            req.PatID,
+					EntityType:       uint32(req.EntityType),
+					OptionalDomainId: req.OptionalDomainID,
+					Operation:        uint32(req.Operation),
+					EntityId:         req.EntityID,
+				},
+			},
+		}, nil
 	}
 
-	ar := res.(authorizeRes)
-	return &grpcAuthV1.AuthZRes{Authorized: ar.authorized, Id: ar.id}, nil
-}
-
-func encodeAuthorizePATRequest(_ context.Context, grpcReq any) (any, error) {
-	req := grpcReq.(authPATReq)
-	return &grpcAuthV1.AuthZPatReq{
-		UserId:           req.userID,
-		PatId:            req.patID,
-		EntityType:       uint32(req.entityType),
-		OptionalDomainId: req.optionalDomainID,
-		Operation:        uint32(req.operation),
-		EntityId:         req.entityID,
+	// Otherwise, it's a policy request
+	return &grpcAuthV1.AuthZReq{
+		AuthType: &grpcAuthV1.AuthZReq_Policy{
+			Policy: &grpcAuthV1.PolicyReq{
+				TokenType:   req.TokenType,
+				Domain:      req.Domain,
+				SubjectType: req.SubjectType,
+				Subject:     req.Subject,
+				SubjectKind: req.SubjectKind,
+				Relation:    req.Relation,
+				Permission:  req.Permission,
+				ObjectType:  req.ObjectType,
+				Object:      req.Object,
+			},
+		},
 	}, nil
 }
