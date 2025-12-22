@@ -42,6 +42,8 @@ var (
 		Status:      groups.EnabledStatus,
 	}
 	directAccess     = "direct"
+	ascDir           = "asc"
+	descDir          = "desc"
 	availableActions = []string{
 		"update",
 		"read",
@@ -673,6 +675,7 @@ func TestRetrieveAll(t *testing.T) {
 
 	repo := postgres.New(database)
 	num := 200
+	baseTime := time.Now().UTC().Truncate(time.Microsecond)
 
 	var items []groups.Group
 	parentID := ""
@@ -685,7 +688,8 @@ func TestRetrieveAll(t *testing.T) {
 			Name:        name,
 			Description: desc,
 			Metadata:    map[string]any{"name": name},
-			CreatedAt:   time.Now().UTC().Truncate(time.Microsecond),
+			CreatedAt:   baseTime.Add(time.Duration(i) * time.Microsecond),
+			UpdatedAt:   baseTime.Add(time.Duration(i) * time.Microsecond),
 			Status:      groups.EnabledStatus,
 		}
 		_, err := repo.Save(context.Background(), group)
@@ -694,6 +698,11 @@ func TestRetrieveAll(t *testing.T) {
 		if i%20 == 0 {
 			parentID = group.ID
 		}
+	}
+
+	reversedGroups := []groups.Group{}
+	for i := len(items) - 1; i >= 0; i-- {
+		reversedGroups = append(reversedGroups, items[i])
 	}
 
 	cases := []struct {
@@ -709,7 +718,7 @@ func TestRetrieveAll(t *testing.T) {
 					Offset: 0,
 					Limit:  10,
 					Order:  "created_at",
-					Dir:    "asc",
+					Dir:    ascDir,
 				},
 			},
 			response: groups.Page{
@@ -729,7 +738,7 @@ func TestRetrieveAll(t *testing.T) {
 					Offset: 10,
 					Limit:  10,
 					Order:  "created_at",
-					Dir:    "asc",
+					Dir:    ascDir,
 				},
 			},
 			response: groups.Page{
@@ -750,7 +759,7 @@ func TestRetrieveAll(t *testing.T) {
 					Limit:  50,
 
 					Order: "created_at",
-					Dir:   "asc",
+					Dir:   ascDir,
 				},
 			},
 			response: groups.Page{
@@ -770,7 +779,7 @@ func TestRetrieveAll(t *testing.T) {
 					Offset: 50,
 					Limit:  50,
 					Order:  "created_at",
-					Dir:    "asc",
+					Dir:    ascDir,
 				},
 			},
 			response: groups.Page{
@@ -790,7 +799,7 @@ func TestRetrieveAll(t *testing.T) {
 					Offset: 1000,
 					Limit:  50,
 					Order:  "created_at",
-					Dir:    "asc",
+					Dir:    ascDir,
 				},
 			},
 			response: groups.Page{
@@ -810,7 +819,7 @@ func TestRetrieveAll(t *testing.T) {
 					Offset: 170,
 					Limit:  50,
 					Order:  "created_at",
-					Dir:    "asc",
+					Dir:    ascDir,
 				},
 			},
 			response: groups.Page{
@@ -970,6 +979,124 @@ func TestRetrieveAll(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			desc: "retrieve groups with order by name ascending",
+			page: groups.Page{
+				PageMeta: groups.PageMeta{
+					Offset: 0,
+					Limit:  10,
+					Order:  "name",
+					Dir:    ascDir,
+				},
+			},
+			response: groups.Page{
+				PageMeta: groups.PageMeta{
+					Total:  uint64(num),
+					Offset: 0,
+					Limit:  10,
+				},
+			},
+			err: nil,
+		},
+		{
+			desc: "retrieve groups with order by name descending",
+			page: groups.Page{
+				PageMeta: groups.PageMeta{
+					Offset: 0,
+					Limit:  10,
+					Order:  "name",
+					Dir:    descDir,
+				},
+			},
+			response: groups.Page{
+				PageMeta: groups.PageMeta{
+					Total:  uint64(num),
+					Offset: 0,
+					Limit:  10,
+				},
+			},
+			err: nil,
+		},
+		{
+			desc: "retrieve groups with order by created_at ascending",
+			page: groups.Page{
+				PageMeta: groups.PageMeta{
+					Offset: 0,
+					Limit:  10,
+					Order:  "created_at",
+					Dir:    ascDir,
+				},
+			},
+			response: groups.Page{
+				PageMeta: groups.PageMeta{
+					Total:  uint64(num),
+					Offset: 0,
+					Limit:  10,
+				},
+				Groups: items[:10],
+			},
+			err: nil,
+		},
+		{
+			desc: "retrieve groups with order by created_at descending",
+			page: groups.Page{
+				PageMeta: groups.PageMeta{
+					Offset: 0,
+					Limit:  10,
+					Order:  "created_at",
+					Dir:    descDir,
+				},
+			},
+			response: groups.Page{
+				PageMeta: groups.PageMeta{
+					Total:  uint64(num),
+					Offset: 0,
+					Limit:  10,
+				},
+				Groups: reversedGroups[:10],
+			},
+			err: nil,
+		},
+		{
+			desc: "retrieve groups with order by updated_at ascending",
+			page: groups.Page{
+				PageMeta: groups.PageMeta{
+					Offset: 0,
+					Limit:  10,
+					Order:  "updated_at",
+					Dir:    ascDir,
+				},
+			},
+			response: groups.Page{
+				PageMeta: groups.PageMeta{
+					Total:  uint64(num),
+					Offset: 0,
+					Limit:  10,
+				},
+				Groups: items[:10],
+			},
+			err: nil,
+		},
+		{
+			desc: "retrieve groups with order by updated_at descending",
+			page: groups.Page{
+				PageMeta: groups.PageMeta{
+					Offset: 0,
+					Limit:  10,
+					Order:  "updated_at",
+					Dir:    descDir,
+				},
+			},
+			response: groups.Page{
+				PageMeta: groups.PageMeta{
+					Total:  uint64(num),
+					Offset: 0,
+					Limit:  10,
+				},
+				Groups: reversedGroups[:10],
+			},
+			err: nil,
+		},
 	}
 
 	for _, tc := range cases {
@@ -981,8 +1108,11 @@ func TestRetrieveAll(t *testing.T) {
 				assert.Equal(t, tc.response.Limit, groups.Limit, fmt.Sprintf("%s: expected %d got %d\n", tc.desc, tc.response.Limit, groups.Limit))
 				assert.Equal(t, tc.response.Offset, groups.Offset, fmt.Sprintf("%s: expected %d got %d\n", tc.desc, tc.response.Offset, groups.Offset))
 				got := stripGroupDetails(groups.Groups)
-				resp := stripGroupDetails(tc.response.Groups)
-				assert.ElementsMatch(t, resp, got, fmt.Sprintf("%s: expected %+v got %+v\n", tc.desc, resp, got))
+				if len(tc.response.Groups) > 0 {
+					resp := stripGroupDetails(tc.response.Groups)
+					assert.ElementsMatch(t, resp, got, fmt.Sprintf("%s: expected %+v got %+v\n", tc.desc, resp, got))
+				}
+				verifyGroupsOrdering(t, groups.Groups, tc.page.PageMeta.Order, tc.page.PageMeta.Dir)
 			default:
 				assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 			}
@@ -2122,9 +2252,39 @@ func stripGroupDetails(groups []groups.Group) []groups.Group {
 		groups[i].Level = 0
 		groups[i].Path = ""
 		groups[i].CreatedAt = validTimestamp
+		groups[i].UpdatedAt = validTimestamp
 		groups[i].Actions = nil
 		groups[i].AccessProviderRoleActions = nil
 	}
 
 	return groups
+}
+
+func verifyGroupsOrdering(t *testing.T, groups []groups.Group, order, dir string) {
+	if order == "" || len(groups) <= 1 {
+		return
+	}
+
+	for i := 0; i < len(groups)-1; i++ {
+		switch order {
+		case "name":
+			if dir == ascDir {
+				assert.LessOrEqual(t, groups[i].Name, groups[i+1].Name, fmt.Sprintf("Groups not ordered by name ascending at index %d: %s > %s", i, groups[i].Name, groups[i+1].Name))
+				continue
+			}
+			assert.GreaterOrEqual(t, groups[i].Name, groups[i+1].Name, fmt.Sprintf("Groups not ordered by name descending at index %d: %s < %s", i, groups[i].Name, groups[i+1].Name))
+		case "created_at":
+			if dir == ascDir {
+				assert.False(t, groups[i].CreatedAt.After(groups[i+1].CreatedAt), fmt.Sprintf("Groups not ordered by created_at ascending at index %d: %v > %v", i, groups[i].CreatedAt, groups[i+1].CreatedAt))
+				continue
+			}
+			assert.False(t, groups[i].CreatedAt.Before(groups[i+1].CreatedAt), fmt.Sprintf("Groups not ordered by created_at descending at index %d: %v < %v", i, groups[i].CreatedAt, groups[i+1].CreatedAt))
+		case "updated_at":
+			if dir == ascDir {
+				assert.False(t, groups[i].UpdatedAt.After(groups[i+1].UpdatedAt), fmt.Sprintf("Groups not ordered by updated_at ascending at index %d: %v > %v", i, groups[i].UpdatedAt, groups[i+1].UpdatedAt))
+				continue
+			}
+			assert.False(t, groups[i].UpdatedAt.Before(groups[i+1].UpdatedAt), fmt.Sprintf("Groups not ordered by updated_at descending at index %d: %v < %v", i, groups[i].UpdatedAt, groups[i+1].UpdatedAt))
+		}
+	}
 }

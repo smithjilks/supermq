@@ -18,7 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const invalid = "invalid"
+const (
+	invalid = "invalid"
+	ascDir  = "asc"
+	descDir = "desc"
+)
 
 var (
 	domainID        = testsutil.GenerateUUID(&testing.T{})
@@ -314,7 +318,7 @@ func TestRetrieveAllByIDs(t *testing.T) {
 				Limit:  10,
 				IDs:    []string{items[1].ID, items[2].ID},
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   2,
@@ -375,7 +379,7 @@ func TestRetrieveAllByIDs(t *testing.T) {
 				IDs:    []string{items[0].ID, items[1].ID},
 				Status: 5,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   2,
@@ -410,7 +414,7 @@ func TestRetrieveAllByIDs(t *testing.T) {
 				},
 				Status: domains.EnabledStatus,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   2,
@@ -713,6 +717,7 @@ func TestListDomains(t *testing.T) {
 			UpdatedBy: userID,
 			Status:    domains.EnabledStatus,
 			CreatedAt: baseTime.Add(time.Duration(i) * time.Millisecond),
+			UpdatedAt: baseTime.Add(time.Duration(i) * time.Millisecond),
 		}
 		if i%5 == 0 {
 			domain.Status = domains.DisabledStatus
@@ -725,6 +730,12 @@ func TestListDomains(t *testing.T) {
 		require.Nil(t, err, fmt.Sprintf("save domain unexpected error: %s", err))
 		items = append(items, domain)
 	}
+
+	reversedDomains := []domains.Domain{}
+	for i := len(items) - 1; i >= 0; i-- {
+		reversedDomains = append(reversedDomains, items[i])
+	}
+
 	cases := []struct {
 		desc     string
 		pm       domains.Page
@@ -738,7 +749,7 @@ func TestListDomains(t *testing.T) {
 				Limit:  10,
 				Status: domains.AllStatus,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   10,
@@ -755,7 +766,7 @@ func TestListDomains(t *testing.T) {
 				Limit:  10,
 				Status: domains.EnabledStatus,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   8,
@@ -773,7 +784,7 @@ func TestListDomains(t *testing.T) {
 				Name:   items[0].Name,
 				Status: domains.AllStatus,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   1,
@@ -790,7 +801,7 @@ func TestListDomains(t *testing.T) {
 				Limit:  10,
 				Status: domains.DisabledStatus,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   2,
@@ -808,7 +819,7 @@ func TestListDomains(t *testing.T) {
 				Tag:    "admin",
 				Status: domains.AllStatus,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   2,
@@ -844,7 +855,7 @@ func TestListDomains(t *testing.T) {
 				},
 				Status: domains.AllStatus,
 				Order:  "created_at",
-				Dir:    "asc",
+				Dir:    ascDir,
 			},
 			response: domains.DomainsPage{
 				Total:   2,
@@ -913,13 +924,148 @@ func TestListDomains(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			desc: "list domains with order by name ascending",
+			pm: domains.Page{
+				Offset: 0,
+				Limit:  10,
+				Status: domains.AllStatus,
+				Order:  "name",
+				Dir:    ascDir,
+			},
+			response: domains.DomainsPage{
+				Total:  10,
+				Offset: 0,
+				Limit:  10,
+			},
+			err: nil,
+		},
+		{
+			desc: "list domains with order by name descending",
+			pm: domains.Page{
+				Offset: 0,
+				Limit:  10,
+				Status: domains.AllStatus,
+				Order:  "name",
+				Dir:    descDir,
+			},
+			response: domains.DomainsPage{
+				Total:  10,
+				Offset: 0,
+				Limit:  10,
+			},
+			err: nil,
+		},
+		{
+			desc: "list domains with order by created_at ascending",
+			pm: domains.Page{
+				Offset: 0,
+				Limit:  10,
+				Status: domains.AllStatus,
+				Order:  "created_at",
+				Dir:    ascDir,
+			},
+			response: domains.DomainsPage{
+				Total:   10,
+				Offset:  0,
+				Limit:   10,
+				Domains: items,
+			},
+			err: nil,
+		},
+		{
+			desc: "list domains with order by created_at descending",
+			pm: domains.Page{
+				Offset: 0,
+				Limit:  10,
+				Status: domains.AllStatus,
+				Order:  "created_at",
+				Dir:    descDir,
+			},
+			response: domains.DomainsPage{
+				Total:   10,
+				Offset:  0,
+				Limit:   10,
+				Domains: reversedDomains,
+			},
+			err: nil,
+		},
+		{
+			desc: "list domains with order by updated_at ascending",
+			pm: domains.Page{
+				Offset: 0,
+				Limit:  10,
+				Status: domains.AllStatus,
+				Order:  "updated_at",
+				Dir:    ascDir,
+			},
+			response: domains.DomainsPage{
+				Total:   10,
+				Offset:  0,
+				Limit:   10,
+				Domains: items,
+			},
+			err: nil,
+		},
+		{
+			desc: "list domains with order by updated_at descending",
+			pm: domains.Page{
+				Offset: 0,
+				Limit:  10,
+				Status: domains.AllStatus,
+				Order:  "updated_at",
+				Dir:    descDir,
+			},
+			response: domains.DomainsPage{
+				Total:   10,
+				Offset:  0,
+				Limit:   10,
+				Domains: reversedDomains,
+			},
+			err: nil,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			dp, err := repo.ListDomains(context.Background(), tc.pm)
-			assert.Equal(t, tc.response, dp, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.response, dp))
+			assert.Equal(t, tc.response.Total, dp.Total, fmt.Sprintf("%s: expected total %d got %d\n", tc.desc, tc.response.Total, dp.Total))
+			assert.Equal(t, tc.response.Offset, dp.Offset, fmt.Sprintf("%s: expected offset %d got %d\n", tc.desc, tc.response.Offset, dp.Offset))
+			assert.Equal(t, tc.response.Limit, dp.Limit, fmt.Sprintf("%s: expected limit %d got %d\n", tc.desc, tc.response.Limit, dp.Limit))
+			if len(tc.response.Domains) > 0 {
+				assert.ElementsMatch(t, tc.response.Domains, dp.Domains, fmt.Sprintf("%s: expected domains %v got %v\n", tc.desc, tc.response.Domains, dp.Domains))
+			}
+			verifyDomainsOrdering(t, dp.Domains, tc.pm.Order, tc.pm.Dir)
 			assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.err, err))
 		})
+	}
+}
+
+func verifyDomainsOrdering(t *testing.T, domains []domains.Domain, order, dir string) {
+	if order == "" || len(domains) <= 1 {
+		return
+	}
+
+	for i := 0; i < len(domains)-1; i++ {
+		switch order {
+		case "name":
+			if dir == ascDir {
+				assert.LessOrEqual(t, domains[i].Name, domains[i+1].Name, fmt.Sprintf("Domains not ordered by name ascending at index %d: %s > %s", i, domains[i].Name, domains[i+1].Name))
+				continue
+			}
+			assert.GreaterOrEqual(t, domains[i].Name, domains[i+1].Name, fmt.Sprintf("Domains not ordered by name descending at index %d: %s < %s", i, domains[i].Name, domains[i+1].Name))
+		case "created_at":
+			if dir == ascDir {
+				assert.False(t, domains[i].CreatedAt.After(domains[i+1].CreatedAt), fmt.Sprintf("Domains not ordered by created_at ascending at index %d: %v > %v", i, domains[i].CreatedAt, domains[i+1].CreatedAt))
+				continue
+			}
+			assert.False(t, domains[i].CreatedAt.Before(domains[i+1].CreatedAt), fmt.Sprintf("Domains not ordered by created_at descending at index %d: %v < %v", i, domains[i].CreatedAt, domains[i+1].CreatedAt))
+		case "updated_at":
+			if dir == ascDir {
+				assert.False(t, domains[i].UpdatedAt.After(domains[i+1].UpdatedAt), fmt.Sprintf("Domains not ordered by updated_at ascending at index %d: %v > %v", i, domains[i].UpdatedAt, domains[i+1].UpdatedAt))
+				continue
+			}
+			assert.False(t, domains[i].UpdatedAt.Before(domains[i+1].UpdatedAt), fmt.Sprintf("Domains not ordered by updated_at descending at index %d: %v < %v", i, domains[i].UpdatedAt, domains[i+1].UpdatedAt))
+		}
 	}
 }
