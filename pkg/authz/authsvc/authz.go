@@ -9,6 +9,7 @@ import (
 	grpcAuthV1 "github.com/absmach/supermq/api/grpc/auth/v1"
 	"github.com/absmach/supermq/auth/api/grpc/auth"
 	"github.com/absmach/supermq/domains"
+	"github.com/absmach/supermq/pkg/authn"
 	"github.com/absmach/supermq/pkg/authz"
 	pkgDomians "github.com/absmach/supermq/pkg/domains"
 	"github.com/absmach/supermq/pkg/errors"
@@ -47,6 +48,28 @@ func NewAuthorization(ctx context.Context, cfg grpcclient.Config, domainsAuthz p
 }
 
 func (a authorization) Authorize(ctx context.Context, pr authz.PolicyReq) error {
+	if pr.PatID != "" && pr.TokenType == authn.PersonalAccessToken {
+		req := grpcAuthV1.AuthZReq{
+			AuthType: &grpcAuthV1.AuthZReq_Pat{
+				Pat: &grpcAuthV1.PATReq{
+					UserId:           pr.UserID,
+					PatId:            pr.PatID,
+					EntityType:       uint32(pr.EntityType),
+					OptionalDomainId: pr.OptionalDomainID,
+					Operation:        uint32(pr.Operation),
+					EntityId:         pr.EntityID,
+				},
+			},
+		}
+		res, err := a.authSvcClient.Authorize(ctx, &req)
+		if err != nil {
+			return errors.Wrap(errors.ErrAuthorization, err)
+		}
+		if !res.GetAuthorized() {
+			return errors.ErrAuthorization
+		}
+	}
+
 	if pr.SubjectType == policies.UserType && (pr.ObjectType == policies.GroupType || pr.ObjectType == policies.ClientType || pr.ObjectType == policies.DomainType) {
 		domainID := pr.Domain
 		if domainID == "" {
@@ -137,27 +160,4 @@ func (a authorization) checkDomain(ctx context.Context, subjectType, subject, do
 	default:
 		return svcerr.ErrInvalidStatus
 	}
-}
-
-func (a authorization) AuthorizePAT(ctx context.Context, pr authz.PatReq) error {
-	req := grpcAuthV1.AuthZReq{
-		AuthType: &grpcAuthV1.AuthZReq_Pat{
-			Pat: &grpcAuthV1.PATReq{
-				UserId:           pr.UserID,
-				PatId:            pr.PatID,
-				EntityType:       uint32(pr.EntityType),
-				OptionalDomainId: pr.OptionalDomainID,
-				Operation:        uint32(pr.Operation),
-				EntityId:         pr.EntityID,
-			},
-		},
-	}
-	res, err := a.authSvcClient.Authorize(ctx, &req)
-	if err != nil {
-		return errors.Wrap(errors.ErrAuthorization, err)
-	}
-	if !res.Authorized {
-		return errors.ErrAuthorization
-	}
-	return nil
 }
