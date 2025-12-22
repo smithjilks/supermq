@@ -11,7 +11,7 @@ var (
 	ErrMalformedEntity = errors.New("malformed entity specification")
 
 	// ErrNotFound indicates a non-existent entity request.
-	ErrNotFound = errors.New("entity not found")
+	ErrNotFound = errors.NewNotFoundError("entity not found")
 
 	// ErrConflict indicates that entity already exists.
 	ErrConflict = errors.New("entity already exists")
@@ -39,4 +39,13 @@ var (
 
 	// ErrMissingNames indicates missing first and last names.
 	ErrMissingNames = errors.New("missing first or last name")
+
+	// ErrMarshalBDEntity indicates a failure to marshal a database entity.
+	ErrMarshalBDEntity = errors.New("failed to marshal db entity")
+
+	// ErrUnmarshalBDEntity indicates a failure to unmarshal a database entity.
+	ErrUnmarshalBDEntity = errors.New("failed to unmarshal db entity")
+
+	// ErrParseQueryParams indicates a failure to parse query parameters.
+	ErrParseQueryParams = errors.NewRequestError("failed to parse query parameters")
 )

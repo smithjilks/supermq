@@ -63,10 +63,9 @@ var (
 			},
 		},
 	}
-	parentGroupID    = testsutil.GenerateUUID(&testing.T{})
-	validID          = testsutil.GenerateUUID(&testing.T{})
-	validSession     = authn.Session{UserID: validID, DomainID: validID, DomainUserID: validID}
-	errRollbackRoles = errors.New("failed to rollback roles")
+	parentGroupID = testsutil.GenerateUUID(&testing.T{})
+	validID       = testsutil.GenerateUUID(&testing.T{})
+	validSession  = authn.Session{UserID: validID, DomainID: validID, DomainUserID: validID}
 )
 
 var (
@@ -203,7 +202,7 @@ func TestCreateChannel(t *testing.T) {
 			},
 			addRoleErr:        svcerr.ErrCreateEntity,
 			deletePoliciesErr: svcerr.ErrRemoveEntity,
-			err:               errRollbackRoles,
+			err:               svcerr.ErrRemoveEntity,
 		},
 	}
 
@@ -404,7 +403,7 @@ func TestEnableChannel(t *testing.T) {
 			retrieveResp: channels.Channel{
 				Status: channels.EnabledStatus,
 			},
-			err: errors.ErrStatusAlreadyAssigned,
+			err: svcerr.ErrStatusAlreadyAssigned,
 		},
 		{
 			desc:         "enable channel with retrieve error",
@@ -467,7 +466,7 @@ func TestDisableChannel(t *testing.T) {
 			retrieveResp: channels.Channel{
 				Status: channels.DisabledStatus,
 			},
-			err: errors.ErrStatusAlreadyAssigned,
+			err: svcerr.ErrStatusAlreadyAssigned,
 		},
 		{
 			desc:         "disable channel with retrieve error",

@@ -85,7 +85,7 @@ func TestSendInvitation(t *testing.T) {
 			},
 			svcReq: domains.Invitation{},
 			svcErr: nil,
-			err:    errors.NewSDKErrorWithStatus(errors.Wrap(apiutil.ErrValidation, apiutil.ErrMissingID), http.StatusBadRequest),
+			err:    errors.NewSDKErrorWithStatus(apiutil.ErrMissingID, http.StatusBadRequest),
 		},
 		{
 			desc:  "send invitation with empty role ID",
@@ -97,7 +97,7 @@ func TestSendInvitation(t *testing.T) {
 			},
 			svcReq: domains.Invitation{},
 			svcErr: nil,
-			err:    errors.NewSDKErrorWithStatus(errors.Wrap(apiutil.ErrValidation, apiutil.ErrMissingID), http.StatusBadRequest),
+			err:    errors.NewSDKErrorWithStatus(apiutil.ErrMissingID, http.StatusBadRequest),
 		},
 		{
 			desc:  "send inviation with invalid domainID",
@@ -218,7 +218,7 @@ func TestListInvitation(t *testing.T) {
 			svcRes:   domains.InvitationPage{},
 			svcErr:   nil,
 			response: sdk.InvitationPage{},
-			err:      errors.NewSDKErrorWithStatus(errors.Wrap(apiutil.ErrValidation, apiutil.ErrLimitSize), http.StatusBadRequest),
+			err:      errors.NewSDKErrorWithStatus(apiutil.ErrLimitSize, http.StatusBadRequest),
 		},
 	}
 	for _, tc := range cases {

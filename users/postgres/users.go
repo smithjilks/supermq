@@ -18,18 +18,20 @@ import (
 	"github.com/absmach/supermq/pkg/postgres"
 	"github.com/absmach/supermq/users"
 	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v5/pgconn"
 )
-
-var pgDuplicateErrCode = "23505"
 
 type userRepo struct {
 	Repository users.UserRepository
+	eh         errors.Handler
 }
 
 func NewRepository(db postgres.Database) users.Repository {
+	errHandlerOptions := []errors.HandlerOption{
+		postgres.WithDuplicateErrors(NewDuplicateErrors()),
+	}
 	return &userRepo{
 		Repository: users.UserRepository{DB: db},
+		eh:         postgres.NewErrorHandler(errHandlerOptions...),
 	}
 }
 
@@ -40,12 +42,12 @@ func (repo *userRepo) Save(ctx context.Context, c users.User) (users.User, error
 
 	dbu, err := toDBUser(c)
 	if err != nil {
-		return users.User{}, errors.Wrap(repoerr.ErrCreateEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrMarshalBDEntity, err)
 	}
 
 	row, err := repo.Repository.DB.NamedQueryContext(ctx, q, dbu)
 	if err != nil {
-		return users.User{}, handleSaveError(repoerr.ErrCreateEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrCreateEntity, err)
 	}
 
 	defer row.Close()
@@ -54,40 +56,28 @@ func (repo *userRepo) Save(ctx context.Context, c users.User) (users.User, error
 
 	dbu = DBUser{}
 	if err := row.StructScan(&dbu); err != nil {
-		return users.User{}, errors.Wrap(repoerr.ErrFailedOpDB, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrFailedOpDB, err)
 	}
 
 	user, err := ToUser(dbu)
 	if err != nil {
-		return users.User{}, errors.Wrap(repoerr.ErrFailedOpDB, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrUnmarshalBDEntity, err)
 	}
 
 	return user, nil
-}
-
-func handleSaveError(wrapper, err error) error {
-	if pqErr, ok := err.(*pgconn.PgError); ok && pqErr.Code == pgDuplicateErrCode {
-		switch pqErr.ConstraintName {
-		case "clients_email_key":
-			return errors.ErrEmailAlreadyExists
-		case "clients_username_key":
-			return errors.ErrUsernameNotAvailable
-		}
-	}
-	return postgres.HandleError(wrapper, err)
 }
 
 func (repo *userRepo) CheckSuperAdmin(ctx context.Context, adminID string) error {
 	q := "SELECT 1 FROM users WHERE id = $1 AND role = $2"
 	rows, err := repo.Repository.DB.QueryContext(ctx, q, adminID, users.AdminRole)
 	if err != nil {
-		return postgres.HandleError(repoerr.ErrViewEntity, err)
+		return repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 	defer rows.Close()
 
 	if rows.Next() {
 		if err := rows.Err(); err != nil {
-			return postgres.HandleError(repoerr.ErrViewEntity, err)
+			return repo.eh.HandleError(repoerr.ErrViewEntity, err)
 		}
 		return nil
 	}
@@ -105,7 +95,7 @@ func (repo *userRepo) RetrieveByID(ctx context.Context, id string) (users.User, 
 
 	rows, err := repo.Repository.DB.NamedQueryContext(ctx, q, dbu)
 	if err != nil {
-		return users.User{}, postgres.HandleError(repoerr.ErrViewEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 	defer rows.Close()
 
@@ -115,12 +105,12 @@ func (repo *userRepo) RetrieveByID(ctx context.Context, id string) (users.User, 
 	}
 
 	if err = rows.StructScan(&dbu); err != nil {
-		return users.User{}, postgres.HandleError(repoerr.ErrViewEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 
 	user, err := ToUser(dbu)
 	if err != nil {
-		return users.User{}, errors.Wrap(repoerr.ErrFailedOpDB, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrUnmarshalBDEntity, err)
 	}
 
 	return user, nil
@@ -129,7 +119,7 @@ func (repo *userRepo) RetrieveByID(ctx context.Context, id string) (users.User, 
 func (repo *userRepo) RetrieveAll(ctx context.Context, pm users.Page) (users.UsersPage, error) {
 	query, err := PageQuery(pm)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrParseQueryParams, err)
 	}
 
 	squery := applyOrdering(query, pm)
@@ -140,26 +130,26 @@ func (repo *userRepo) RetrieveAll(ctx context.Context, pm users.Page) (users.Use
 
 	dbPage, err := ToDBUsersPage(pm)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrMarshalBDEntity, err)
 	}
 
 	var items []users.User
 	if !pm.OnlyTotal {
 		rows, err := repo.Repository.DB.NamedQueryContext(ctx, q, dbPage)
 		if err != nil {
-			return users.UsersPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
+			return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrFailedToRetrieveAllGroups, err)
 		}
 		defer rows.Close()
 
 		for rows.Next() {
 			dbu := DBUser{}
 			if err := rows.StructScan(&dbu); err != nil {
-				return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+				return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 			}
 
 			c, err := ToUser(dbu)
 			if err != nil {
-				return users.UsersPage{}, err
+				return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrUnmarshalBDEntity, err)
 			}
 
 			items = append(items, c)
@@ -170,7 +160,7 @@ func (repo *userRepo) RetrieveAll(ctx context.Context, pm users.Page) (users.Use
 
 	total, err := postgres.Total(ctx, repo.Repository.DB, cq, dbPage)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 
 	page := users.UsersPage{
@@ -242,12 +232,12 @@ func (repo *userRepo) Update(ctx context.Context, id string, ur users.UserReq) (
 func (repo *userRepo) update(ctx context.Context, user users.User, query string) (users.User, error) {
 	dbu, err := toDBUser(user)
 	if err != nil {
-		return users.User{}, errors.Wrap(repoerr.ErrUpdateEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrMarshalBDEntity, err)
 	}
 
 	row, err := repo.Repository.DB.NamedQueryContext(ctx, query, dbu)
 	if err != nil {
-		return users.User{}, postgres.HandleError(repoerr.ErrUpdateEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrUpdateEntity, err)
 	}
 	defer row.Close()
 
@@ -257,7 +247,7 @@ func (repo *userRepo) update(ctx context.Context, user users.User, query string)
 	}
 
 	if err := row.StructScan(&dbu); err != nil {
-		return users.User{}, errors.Wrap(repoerr.ErrUpdateEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrUnmarshalBDEntity, err)
 	}
 
 	return ToUser(dbu)
@@ -308,7 +298,7 @@ func (repo *userRepo) Delete(ctx context.Context, id string) error {
 
 	result, err := repo.Repository.DB.ExecContext(ctx, q, id)
 	if err != nil {
-		return postgres.HandleError(repoerr.ErrRemoveEntity, err)
+		return repo.eh.HandleError(repoerr.ErrRemoveEntity, err)
 	}
 	if rows, _ := result.RowsAffected(); rows == 0 {
 		return repoerr.ErrNotFound
@@ -320,7 +310,7 @@ func (repo *userRepo) Delete(ctx context.Context, id string) error {
 func (repo *userRepo) SearchUsers(ctx context.Context, pm users.Page) (users.UsersPage, error) {
 	query, err := PageQuery(pm)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrParseQueryParams, err)
 	}
 
 	tq := query
@@ -330,12 +320,12 @@ func (repo *userRepo) SearchUsers(ctx context.Context, pm users.Page) (users.Use
 
 	dbPage, err := ToDBUsersPage(pm)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrMarshalBDEntity, err)
 	}
 
 	rows, err := repo.Repository.DB.NamedQueryContext(ctx, q, dbPage)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 	defer rows.Close()
 
@@ -343,7 +333,7 @@ func (repo *userRepo) SearchUsers(ctx context.Context, pm users.Page) (users.Use
 	for rows.Next() {
 		dbu := DBUser{}
 		if err := rows.StructScan(&dbu); err != nil {
-			return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+			return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 		}
 
 		c, err := ToUser(dbu)
@@ -358,7 +348,7 @@ func (repo *userRepo) SearchUsers(ctx context.Context, pm users.Page) (users.Use
 
 	total, err := postgres.Total(ctx, repo.Repository.DB, cq, dbPage)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 
 	page := users.UsersPage{
@@ -381,7 +371,7 @@ func (repo *userRepo) RetrieveAllByIDs(ctx context.Context, pm users.Page) (user
 	}
 	query, err := PageQuery(pm)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrParseQueryParams, err)
 	}
 	squery := applyOrdering(query, pm)
 
@@ -389,11 +379,11 @@ func (repo *userRepo) RetrieveAllByIDs(ctx context.Context, pm users.Page) (user
                     u.created_at, u.updated_at, COALESCE(u.updated_by, '') AS updated_by FROM users u %s LIMIT :limit OFFSET :offset;`, squery)
 	dbPage, err := ToDBUsersPage(pm)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrMarshalBDEntity, err)
 	}
 	rows, err := repo.Repository.DB.NamedQueryContext(ctx, q, dbPage)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrFailedToRetrieveAllGroups, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 	defer rows.Close()
 
@@ -401,12 +391,12 @@ func (repo *userRepo) RetrieveAllByIDs(ctx context.Context, pm users.Page) (user
 	for rows.Next() {
 		dbu := DBUser{}
 		if err := rows.StructScan(&dbu); err != nil {
-			return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+			return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 		}
 
 		c, err := ToUser(dbu)
 		if err != nil {
-			return users.UsersPage{}, err
+			return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrUnmarshalBDEntity, err)
 		}
 
 		items = append(items, c)
@@ -415,7 +405,7 @@ func (repo *userRepo) RetrieveAllByIDs(ctx context.Context, pm users.Page) (user
 
 	total, err := postgres.Total(ctx, repo.Repository.DB, cq, dbPage)
 	if err != nil {
-		return users.UsersPage{}, errors.Wrap(repoerr.ErrViewEntity, err)
+		return users.UsersPage{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 
 	page := users.UsersPage{
@@ -441,14 +431,14 @@ func (repo *userRepo) RetrieveByEmail(ctx context.Context, email string) (users.
 
 	row, err := repo.Repository.DB.NamedQueryContext(ctx, q, dbu)
 	if err != nil {
-		return users.User{}, postgres.HandleError(repoerr.ErrViewEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 	defer row.Close()
 
 	dbu = DBUser{}
 	if row.Next() {
 		if err := row.StructScan(&dbu); err != nil {
-			return users.User{}, errors.Wrap(repoerr.ErrViewEntity, err)
+			return users.User{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 		}
 
 		return ToUser(dbu)
@@ -468,14 +458,14 @@ func (repo *userRepo) RetrieveByUsername(ctx context.Context, username string) (
 
 	row, err := repo.Repository.DB.NamedQueryContext(ctx, q, dbu)
 	if err != nil {
-		return users.User{}, postgres.HandleError(repoerr.ErrViewEntity, err)
+		return users.User{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 	}
 	defer row.Close()
 
 	dbu = DBUser{}
 	if row.Next() {
 		if err := row.StructScan(&dbu); err != nil {
-			return users.User{}, errors.Wrap(repoerr.ErrViewEntity, err)
+			return users.User{}, repo.eh.HandleError(repoerr.ErrViewEntity, err)
 		}
 
 		return ToUser(dbu)

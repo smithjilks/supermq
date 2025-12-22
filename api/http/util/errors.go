@@ -10,268 +10,271 @@ import "github.com/absmach/supermq/pkg/errors"
 // errors are logged twice.
 var (
 	// ErrValidation indicates that an error was returned by the API.
-	ErrValidation = errors.New("something went wrong with the request")
+	ErrValidation = errors.NewRequestError("something went wrong with the request")
 
 	// ErrBearerToken indicates missing or invalid bearer user token.
-	ErrBearerToken = errors.New("missing or invalid bearer user token")
+	ErrBearerToken = errors.NewAuthNError("missing or invalid bearer user token")
 
 	// ErrBearerKey indicates missing or invalid bearer entity key.
-	ErrBearerKey = errors.New("missing or invalid bearer entity key")
+	ErrBearerKey = errors.NewAuthNError("missing or invalid bearer entity key")
 
 	// ErrMissingID indicates missing entity ID.
-	ErrMissingID = errors.New("missing entity id")
+	ErrMissingID = errors.NewRequestError("missing entity id")
 
 	// ErrMissingEntityID indicates missing entity ID.
-	ErrMissingEntityID = errors.New("missing entity id")
+	ErrMissingEntityID = errors.NewRequestError("missing entity id")
 
 	// ErrMissingClientID indicates missing client ID.
-	ErrMissingClientID = errors.New("missing cient id")
+	ErrMissingClientID = errors.NewRequestError("missing client id")
 
 	// ErrMissingChannelID indicates missing client ID.
-	ErrMissingChannelID = errors.New("missing channel id")
+	ErrMissingChannelID = errors.NewRequestError("missing channel id")
 
 	// ErrMissingConnectionType indicates missing connection tpye.
-	ErrMissingConnectionType = errors.New("missing connection type")
+	ErrMissingConnectionType = errors.NewRequestError("missing connection type")
 
 	// ErrMissingParentGroupID indicates missing parent group ID.
-	ErrMissingParentGroupID = errors.New("missing parent group id")
+	ErrMissingParentGroupID = errors.NewRequestError("missing parent group id")
 
 	// ErrMissingChildrenGroupIDs indicates missing children group IDs.
-	ErrMissingChildrenGroupIDs = errors.New("missing children group ids")
+	ErrMissingChildrenGroupIDs = errors.NewRequestError("missing children group ids")
 
 	// ErrSelfParentingNotAllowed indicates child id is same as parent id.
-	ErrSelfParentingNotAllowed = errors.New("self parenting not allowed")
+	ErrSelfParentingNotAllowed = errors.NewRequestError("self parenting not allowed")
 
 	// ErrInvalidChildGroupID indicates invalid child group ID.
-	ErrInvalidChildGroupID = errors.New("invalid child group id")
+	ErrInvalidChildGroupID = errors.NewRequestError("invalid child group id")
 
 	// ErrInvalidAuthKey indicates invalid auth key.
 	ErrInvalidAuthKey = errors.New("invalid auth key")
 
 	// ErrInvalidIDFormat indicates an invalid ID format.
-	ErrInvalidIDFormat = errors.New("invalid id format provided")
+	ErrInvalidIDFormat = errors.NewRequestError("invalid id format provided")
 
 	// ErrNameSize indicates that name size exceeds the max.
-	ErrNameSize = errors.New("invalid name size")
+	ErrNameSize = errors.NewRequestError("invalid name size")
 
 	// ErrEmailSize indicates that email size exceeds the max.
-	ErrEmailSize = errors.New("invalid email size")
+	ErrEmailSize = errors.NewRequestError("invalid email size")
 
 	// ErrInvalidRole indicates that an invalid role.
-	ErrInvalidRole = errors.New("invalid client role")
+	ErrInvalidRole = errors.NewRequestError("invalid client role")
 
 	// ErrLimitSize indicates that an invalid limit.
-	ErrLimitSize = errors.New("invalid limit size")
+	ErrLimitSize = errors.NewRequestError("invalid limit size")
 
 	// ErrLevel indicates that an invalid level.
-	ErrLevel = errors.New("invalid level")
+	ErrLevel = errors.NewRequestError("invalid level")
 
 	// ErrOffsetSize indicates an invalid offset.
-	ErrOffsetSize = errors.New("invalid offset size")
+	ErrOffsetSize = errors.NewRequestError("invalid offset size")
 
 	// ErrInvalidOrder indicates an invalid list order.
-	ErrInvalidOrder = errors.New("invalid list order provided")
+	ErrInvalidOrder = errors.NewRequestError("invalid list order provided")
 
 	// ErrInvalidDirection indicates an invalid list direction.
-	ErrInvalidDirection = errors.New("invalid list direction provided")
+	ErrInvalidDirection = errors.NewRequestError("invalid list direction provided")
 
 	// ErrInvalidMemberKind indicates an invalid member kind.
-	ErrInvalidMemberKind = errors.New("invalid member kind")
+	ErrInvalidMemberKind = errors.NewRequestError("invalid member kind")
 
 	// ErrEmptyList indicates that entity data is empty.
-	ErrEmptyList = errors.New("empty list provided")
+	ErrEmptyList = errors.NewRequestError("empty list provided")
 
 	// ErrMissingRoleName indicates that role name is empty.
-	ErrMissingRoleName = errors.New("empty role name")
+	ErrMissingRoleName = errors.NewRequestError("empty role name")
 
 	// ErrMissingRoleID indicates that role id is empty.
-	ErrMissingRoleID = errors.New("empty role id")
+	ErrMissingRoleID = errors.NewRequestError("empty role id")
 
 	// ErrMissingRoleOperations indicates that role operations are empty.
-	ErrMissingRoleOperations = errors.New("empty role operations")
+	ErrMissingRoleOperations = errors.NewRequestError("empty role operations")
 
 	// ErrMissingRoleMembers indicates that role members are empty.
-	ErrMissingRoleMembers = errors.New("empty role members")
+	ErrMissingRoleMembers = errors.NewRequestError("empty role members")
 
 	// ErrMalformedPolicy indicates that policies are malformed.
-	ErrMalformedPolicy = errors.New("malformed policy")
+	ErrMalformedPolicy = errors.NewRequestError("malformed policy")
 
 	// ErrMissingPolicySub indicates that policies are subject.
-	ErrMissingPolicySub = errors.New("malformed policy subject")
+	ErrMissingPolicySub = errors.NewRequestError("malformed policy subject")
 
 	// ErrMissingPolicyObj indicates missing policies object.
-	ErrMissingPolicyObj = errors.New("malformed policy object")
+	ErrMissingPolicyObj = errors.NewRequestError("malformed policy object")
 
 	// ErrMalformedPolicyAct indicates missing policies action.
-	ErrMalformedPolicyAct = errors.New("malformed policy action")
+	ErrMalformedPolicyAct = errors.NewRequestError("malformed policy action")
 
 	// ErrMissingPolicyEntityType indicates missing policies entity type.
-	ErrMissingPolicyEntityType = errors.New("missing policy entity type")
+	ErrMissingPolicyEntityType = errors.NewRequestError("missing policy entity type")
 
 	// ErrMalformedPolicyPer indicates missing policies relation.
-	ErrMalformedPolicyPer = errors.New("malformed policy permission")
+	ErrMalformedPolicyPer = errors.NewRequestError("malformed policy permission")
 
 	// ErrMissingCertData indicates missing cert data (ttl).
-	ErrMissingCertData = errors.New("missing certificate data")
+	ErrMissingCertData = errors.NewRequestError("missing certificate data")
 
 	// ErrInvalidCertData indicates invalid cert data (ttl).
-	ErrInvalidCertData = errors.New("invalid certificate data")
+	ErrInvalidCertData = errors.NewRequestError("invalid certificate data")
 
 	// ErrInvalidTopic indicates an invalid subscription topic.
-	ErrInvalidTopic = errors.New("invalid Subscription topic")
+	ErrInvalidTopic = errors.NewRequestError("invalid Subscription topic")
 
 	// ErrInvalidContact indicates an invalid subscription contract.
-	ErrInvalidContact = errors.New("invalid Subscription contact")
+	ErrInvalidContact = errors.NewRequestError("invalid Subscription contact")
 
 	// ErrMissingEmail indicates missing email.
-	ErrMissingEmail = errors.New("missing email")
+	ErrMissingEmail = errors.NewRequestError("missing email")
 
 	// ErrInvalidEmail indicates missing email.
-	ErrInvalidEmail = errors.New("invalid email")
+	ErrInvalidEmail = errors.NewRequestError("invalid email")
 
 	// ErrMissingHost indicates missing host.
-	ErrMissingHost = errors.New("missing host")
+	ErrMissingHost = errors.NewRequestError("missing host")
 
 	// ErrMissingPass indicates missing password.
-	ErrMissingPass = errors.New("missing password")
+	ErrMissingPass = errors.NewRequestError("missing password")
 
 	// ErrMissingConfPass indicates missing conf password.
-	ErrMissingConfPass = errors.New("missing conf password")
+	ErrMissingConfPass = errors.NewRequestError("missing conf password")
 
 	// ErrInvalidResetPass indicates an invalid reset password.
-	ErrInvalidResetPass = errors.New("invalid reset password")
+	ErrInvalidResetPass = errors.NewRequestError("invalid reset password")
 
 	// ErrInvalidComparator indicates an invalid comparator.
-	ErrInvalidComparator = errors.New("invalid comparator")
+	ErrInvalidComparator = errors.NewRequestError("invalid comparator")
 
 	// ErrMissingMemberIDs indicates missing member ids.
-	ErrMissingMemberIDs = errors.New("missing member ids")
+	ErrMissingMemberIDs = errors.NewRequestError("missing member ids")
 
 	// ErrMissingMemberType indicates missing group member type.
-	ErrMissingMemberType = errors.New("missing group member type")
+	ErrMissingMemberType = errors.NewRequestError("missing group member type")
 
 	// ErrMissingMemberKind indicates missing group member kind.
-	ErrMissingMemberKind = errors.New("missing group member kind")
+	ErrMissingMemberKind = errors.NewRequestError("missing group member kind")
 
 	// ErrMissingRelation indicates missing relation.
-	ErrMissingRelation = errors.New("missing relation")
+	ErrMissingRelation = errors.NewRequestError("missing relation")
 
 	// ErrInvalidRelation indicates an invalid relation.
-	ErrInvalidRelation = errors.New("invalid relation")
+	ErrInvalidRelation = errors.NewRequestError("invalid relation")
 
 	// ErrInvalidAPIKey indicates an invalid API key type.
-	ErrInvalidAPIKey = errors.New("invalid api key type")
+	ErrInvalidAPIKey = errors.NewRequestError("invalid api key type")
 
 	// ErrInvitationState indicates an invalid invitation state.
-	ErrInvitationState = errors.New("invalid invitation state")
+	ErrInvitationState = errors.NewRequestError("invalid invitation state")
 
 	// ErrMissingIdentity indicates missing entity Identity.
-	ErrMissingIdentity = errors.New("missing entity identity")
+	ErrMissingIdentity = errors.NewRequestError("missing entity identity")
 
 	// ErrMissingSecret indicates missing secret.
-	ErrMissingSecret = errors.New("missing secret")
+	ErrMissingSecret = errors.NewRequestError("missing secret")
 
 	// ErrPasswordFormat indicates weak password.
-	ErrPasswordFormat = errors.New("password does not meet the requirements")
+	ErrPasswordFormat = errors.NewRequestError("password does not meet the requirements")
 
 	// ErrMissingName indicates missing identity name.
-	ErrMissingName = errors.New("missing identity name")
+	ErrMissingName = errors.NewRequestError("missing identity name")
 
 	// ErrMissingRoute indicates missing route.
-	ErrMissingRoute = errors.New("missing route")
+	ErrMissingRoute = errors.NewRequestError("missing route")
 
 	// ErrInvalidLevel indicates an invalid group level.
-	ErrInvalidLevel = errors.New("invalid group level (should be between 0 and 5)")
+	ErrInvalidLevel = errors.NewRequestError("invalid group level (should be between 0 and 5)")
 
 	// ErrNotFoundParam indicates that the parameter was not found in the query.
-	ErrNotFoundParam = errors.New("parameter not found in the query")
+	ErrNotFoundParam = errors.NewRequestError("parameter not found in the query")
 
 	// ErrInvalidQueryParams indicates invalid query parameters.
-	ErrInvalidQueryParams = errors.New("invalid query parameters")
+	ErrInvalidQueryParams = errors.NewRequestError("invalid query parameters")
 
 	// ErrInvalidVisibilityType indicates invalid visibility type.
-	ErrInvalidVisibilityType = errors.New("invalid visibility type")
+	ErrInvalidVisibilityType = errors.NewRequestError("invalid visibility type")
 
 	// ErrUnsupportedContentType indicates unacceptable or lack of Content-Type.
-	ErrUnsupportedContentType = errors.New("unsupported content type")
+	ErrUnsupportedContentType = errors.NewMediaTypeError("unsupported content type")
 
 	// ErrRollbackTx indicates failed to rollback transaction.
-	ErrRollbackTx = errors.New("failed to rollback transaction")
+	ErrRollbackTx = errors.NewRequestError("failed to rollback transaction")
 
 	// ErrInvalidAggregation indicates invalid aggregation value.
-	ErrInvalidAggregation = errors.New("invalid aggregation value")
+	ErrInvalidAggregation = errors.NewRequestError("invalid aggregation value")
 
 	// ErrInvalidInterval indicates invalid interval value.
-	ErrInvalidInterval = errors.New("invalid interval value")
+	ErrInvalidInterval = errors.NewRequestError("invalid interval value")
 
 	// ErrMissingFrom indicates missing from value.
-	ErrMissingFrom = errors.New("missing from time value")
+	ErrMissingFrom = errors.NewRequestError("missing from time value")
 
 	// ErrMissingTo indicates missing to value.
-	ErrMissingTo = errors.New("missing to time value")
+	ErrMissingTo = errors.NewRequestError("missing to time value")
 
 	// ErrEmptyMessage indicates empty message.
-	ErrEmptyMessage = errors.New("empty message")
+	ErrEmptyMessage = errors.NewRequestError("empty message")
 
 	// ErrMissingEntityType indicates missing entity type.
-	ErrMissingEntityType = errors.New("missing entity type")
+	ErrMissingEntityType = errors.NewRequestError("missing entity type")
 
 	// ErrInvalidEntityType indicates invalid entity type.
-	ErrInvalidEntityType = errors.New("invalid entity type")
+	ErrInvalidEntityType = errors.NewRequestError("invalid entity type")
 
 	// ErrInvalidTimeFormat indicates invalid time format i.e not unix time.
-	ErrInvalidTimeFormat = errors.New("invalid time format use unix time")
+	ErrInvalidTimeFormat = errors.NewRequestError("invalid time format use unix time")
 
 	// ErrEmptySearchQuery indicates search query should not be empty.
-	ErrEmptySearchQuery = errors.New("search query must not be empty")
+	ErrEmptySearchQuery = errors.NewRequestError("search query must not be empty")
 
 	// ErrLenSearchQuery indicates search query length.
-	ErrLenSearchQuery = errors.New("search query must be at least 3 characters")
+	ErrLenSearchQuery = errors.NewRequestError("search query must be at least 3 characters")
 
 	// ErrMissingDomainID indicates missing domainID.
-	ErrMissingDomainID = errors.New("missing domainID")
+	ErrMissingDomainID = errors.NewRequestError("missing domainID")
 
 	// ErrMissingUsername indicates missing user name.
-	ErrMissingUsername = errors.New("missing username")
+	ErrMissingUsername = errors.NewRequestError("missing username")
 
 	// ErrInvalidUsername indicates invalid user name.
-	ErrInvalidUsername = errors.New("invalid username")
+	ErrInvalidUsername = errors.NewRequestError("invalid username")
 
 	// ErrMissingFirstName indicates missing first name.
-	ErrMissingFirstName = errors.New("missing first name")
+	ErrMissingFirstName = errors.NewRequestError("missing first name")
 
 	// ErrMissingLastName indicates missing last name.
-	ErrMissingLastName = errors.New("missing last name")
+	ErrMissingLastName = errors.NewRequestError("missing last name")
 
 	// ErrInvalidProfilePictureURL indicates that the profile picture url is invalid.
-	ErrInvalidProfilePictureURL = errors.New("invalid profile picture url")
+	ErrInvalidProfilePictureURL = errors.NewRequestError("invalid profile picture url")
 
-	ErrMultipleEntitiesFilter = errors.New("multiple entities are provided in filter are not supported")
+	ErrMultipleEntitiesFilter = errors.NewRequestError("multiple entities are provided in filter are not supported")
 
 	// ErrMissingDescription indicates missing description.
-	ErrMissingDescription = errors.New("missing description")
+	ErrMissingDescription = errors.NewRequestError("missing description")
 
 	// ErrUnsupportedTokenType indicates that this type of token is not supported.
-	ErrUnsupportedTokenType = errors.New("unsupported content token type")
+	ErrUnsupportedTokenType = errors.NewRequestError("unsupported content token type")
 
 	// ErrMissingUserID indicates missing user ID.
-	ErrMissingUserID = errors.New("missing user id")
+	ErrMissingUserID = errors.NewRequestError("missing user id")
 
 	// ErrMissingPATID indicates missing pat ID.
-	ErrMissingPATID = errors.New("missing pat id")
+	ErrMissingPATID = errors.NewRequestError("missing pat id")
 
 	// ErrInvalidNameFormat indicates invalid name format.
-	ErrInvalidNameFormat = errors.New("invalid name format")
+	ErrInvalidNameFormat = errors.NewRequestError("invalid name format")
 
 	// ErrInvalidRouteFormat indicates invalid route format.
-	ErrInvalidRouteFormat = errors.New("invalid route format")
+	ErrInvalidRouteFormat = errors.NewRequestError("invalid route format")
 
 	// ErrMissingUsernameEmail indicates missing user name / email.
-	ErrMissingUsernameEmail = errors.New("missing username / email")
+	ErrMissingUsernameEmail = errors.NewRequestError("missing username / email")
 
 	// ErrInvalidVerification indicates invalid email verification.
-	ErrInvalidVerification = errors.New("invalid verification")
+	ErrInvalidVerification = errors.NewRequestError("invalid verification")
 
 	// ErrEmailNotVerified indicates invalid email not verified.
-	ErrEmailNotVerified = errors.New("email not verified")
+	ErrEmailNotVerified = errors.NewRequestError("email not verified")
+
+	// ErrMalformedRequest indicates malformed request body.
+	ErrMalformedRequestBody = errors.NewRequestError("request body is not a valid JSON, expecting a valid JSON")
 )

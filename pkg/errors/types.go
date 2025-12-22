@@ -5,7 +5,7 @@ package errors
 
 var (
 	// ErrMalformedEntity indicates a malformed entity specification.
-	ErrMalformedEntity = New("malformed entity specification")
+	ErrMalformedEntity = NewRequestError("malformed entity specification")
 
 	// ErrUnsupportedContentType indicates invalid content type.
 	ErrUnsupportedContentType = New("invalid content type")
@@ -15,9 +15,6 @@ var (
 
 	// ErrEmptyPath indicates empty file path.
 	ErrEmptyPath = New("empty file path")
-
-	// ErrStatusAlreadyAssigned indicated that the client or group has already been assigned the status.
-	ErrStatusAlreadyAssigned = New("status already assigned")
 
 	// ErrRollbackTx indicates failed to rollback transaction.
 	ErrRollbackTx = New("failed to rollback transaction")
@@ -35,7 +32,7 @@ var (
 	ErrMissingMember = New("member id is not found")
 
 	// ErrEmailAlreadyExists indicates that the email id already exists.
-	ErrEmailAlreadyExists = New("email id already exists")
+	ErrEmailAlreadyExists = New("email id already registered")
 
 	// ErrUsernameNotAvailable indicates that the username is not available.
 	ErrUsernameNotAvailable = New("username not available")
@@ -50,5 +47,5 @@ var (
 	ErrTryAgain = New("Something went wrong, please try again")
 
 	// ErrRouteNotAvailable indicates that the username is not available.
-	ErrRouteNotAvailable = New("route not available")
+	ErrRouteNotAvailable = NewRequestError("route not available")
 )

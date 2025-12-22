@@ -28,9 +28,11 @@ import (
 const defaultUsernamePrefix = "user"
 
 var (
-	errIssueToken       = errors.New("failed to issue token")
-	errRecoveryToken    = errors.New("failed to generate password recovery token")
-	errLoginDisableUser = errors.New("failed to login in disabled user")
+	errIssueToken            = errors.NewServiceError("failed to issue token")
+	errRecoveryToken         = errors.NewServiceError("failed to generate password recovery token")
+	errLoginDisableUser      = errors.NewAuthNError("failed to login in disabled user")
+	errMatchUserVerification = errors.NewRequestError("user verification does not match with stored verification")
+	errSimilarUpdateEmail    = errors.NewRequestError("new email is similar to the current email")
 
 	usernameRegExp = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{34}[a-z0-9]$`)
 )
@@ -65,28 +67,28 @@ func (svc service) Register(ctx context.Context, session authn.Session, u User, 
 
 	userID, err := svc.idProvider.ID()
 	if err != nil {
-		return User{}, err
+		return User{}, errors.Wrap(svcerr.ErrIssueProviderID, err)
 	}
 
 	if u.Credentials.Secret != "" {
 		hash, err := svc.hasher.Hash(u.Credentials.Secret)
 		if err != nil {
-			return User{}, errors.Wrap(svcerr.ErrMalformedEntity, err)
+			return User{}, errors.Wrap(svcerr.ErrHashPassword, err)
 		}
 		u.Credentials.Secret = hash
 	}
 
 	if u.Status != DisabledStatus && u.Status != EnabledStatus {
-		return User{}, errors.Wrap(svcerr.ErrMalformedEntity, svcerr.ErrInvalidStatus)
+		return User{}, svcerr.ErrInvalidStatus
 	}
 	if u.Role != UserRole && u.Role != AdminRole {
-		return User{}, errors.Wrap(svcerr.ErrMalformedEntity, svcerr.ErrInvalidRole)
+		return User{}, svcerr.ErrInvalidRole
 	}
 	u.ID = userID
 	u.CreatedAt = time.Now().UTC()
 
 	if err := svc.addUserPolicy(ctx, u.ID, u.Role); err != nil {
-		return User{}, err
+		return User{}, errors.Wrap(svcerr.ErrAddPolicies, err)
 	}
 	defer func() {
 		if err != nil {
@@ -105,7 +107,7 @@ func (svc service) Register(ctx context.Context, session authn.Session, u User, 
 func (svc service) SendVerification(ctx context.Context, session authn.Session) error {
 	dbUser, err := svc.users.RetrieveByID(ctx, session.UserID)
 	if err != nil {
-		return err
+		return errors.Wrap(svcerr.ErrViewEntity, err)
 	}
 
 	if !dbUser.VerifiedAt.IsZero() {
@@ -114,7 +116,7 @@ func (svc service) SendVerification(ctx context.Context, session authn.Session) 
 
 	uv, err := svc.users.RetrieveUserVerification(ctx, dbUser.ID, dbUser.Email)
 	if err != nil && err != repoerr.ErrNotFound {
-		return err
+		return errors.Wrap(svcerr.ErrCreateEntity, err)
 	}
 
 	if err = uv.Valid(); err != nil {
@@ -150,7 +152,7 @@ func (svc service) VerifyEmail(ctx context.Context, token string) (User, error) 
 	}
 
 	if err := stored.Match(received); err != nil {
-		return User{}, err
+		return User{}, errors.Wrap(errMatchUserVerification, err)
 	}
 
 	if err := stored.Valid(); err != nil {
@@ -219,8 +221,12 @@ func (svc service) RefreshToken(ctx context.Context, session authn.Session, refr
 	if dbUser.Status == DisabledStatus {
 		return &grpcTokenV1.Token{}, errors.Wrap(svcerr.ErrAuthentication, errLoginDisableUser)
 	}
+	token, err := svc.token.Refresh(ctx, &grpcTokenV1.RefreshReq{RefreshToken: refreshToken, Verified: !dbUser.VerifiedAt.IsZero()})
+	if err != nil {
+		return &grpcTokenV1.Token{}, errors.Wrap(errIssueToken, err)
+	}
 
-	return svc.token.Refresh(ctx, &grpcTokenV1.RefreshReq{RefreshToken: refreshToken, Verified: !dbUser.VerifiedAt.IsZero()})
+	return token, nil
 }
 
 func (svc service) View(ctx context.Context, session authn.Session, id string) (User, error) {
@@ -375,7 +381,7 @@ func (svc service) UpdateEmail(ctx context.Context, session authn.Session, userI
 		return User{}, svcerr.ErrExternalAuthProviderCouldNotUpdate
 	}
 	if oldUsr.Email == email {
-		return User{}, fmt.Errorf("current email is same as update requested email")
+		return User{}, errSimilarUpdateEmail
 	}
 
 	usr := User{
@@ -409,7 +415,11 @@ func (svc service) SendPasswordReset(ctx context.Context, email string) error {
 		return errors.Wrap(errRecoveryToken, err)
 	}
 
-	return svc.email.SendPasswordReset([]string{email}, user.Credentials.Username, token.AccessToken)
+	if err := svc.email.SendPasswordReset([]string{email}, user.Credentials.Username, token.AccessToken); err != nil {
+		return errors.NewInternalErrorWithErr(err)
+	}
+
+	return nil
 }
 
 func (svc service) ResetSecret(ctx context.Context, session authn.Session, secret string) error {
@@ -548,7 +558,7 @@ func (svc service) changeUserStatus(ctx context.Context, session authn.Session, 
 		return User{}, errors.Wrap(svcerr.ErrViewEntity, err)
 	}
 	if dbu.Status == user.Status {
-		return User{}, errors.ErrStatusAlreadyAssigned
+		return User{}, svcerr.ErrStatusAlreadyAssigned
 	}
 	user.UpdatedBy = session.UserID
 

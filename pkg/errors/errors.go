@@ -5,6 +5,8 @@ package errors
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 )
 
 // Error specifies an API that must be fullfiled by error type.
@@ -16,7 +18,7 @@ type Error interface {
 	Msg() string
 
 	// Err returns wrapped error.
-	Err() Error
+	Err() error
 
 	// MarshalJSON returns a marshaled error.
 	MarshalJSON() ([]byte, error)
@@ -27,14 +29,14 @@ var _ Error = (*customError)(nil)
 // customError represents a SuperMQ error.
 type customError struct {
 	msg string
-	err Error
+	err error
 }
 
 // New returns an Error that formats as the given text.
 func New(text string) Error {
 	return &customError{
 		msg: text,
-		err: nil,
+		err: errors.New(text),
 	}
 }
 
@@ -45,32 +47,25 @@ func (ce *customError) Error() string {
 	if ce.err == nil {
 		return ce.msg
 	}
-	return ce.msg + " : " + ce.err.Error()
+	return ce.err.Error()
 }
 
 func (ce *customError) Msg() string {
 	return ce.msg
 }
 
-func (ce *customError) Err() Error {
+func (ce *customError) Err() error {
 	return ce.err
 }
 
 func (ce *customError) MarshalJSON() ([]byte, error) {
-	var val string
-	if e := ce.Err(); e != nil {
-		val = e.Msg()
-	}
 	return json.Marshal(&struct {
-		Err string `json:"error"`
 		Msg string `json:"message"`
 	}{
-		Err: val,
 		Msg: ce.Msg(),
 	})
 }
 
-// Contains inspects if e2 error is contained in any layer of e1 error.
 func Contains(e1, e2 error) bool {
 	if e1 == nil || e2 == nil {
 		return e2 == e1
@@ -82,7 +77,8 @@ func Contains(e1, e2 error) bool {
 		}
 		return Contains(ce.Err(), e2)
 	}
-	return e1.Error() == e2.Error()
+
+	return errors.Is(e1, e2) || e1.Error() == e2.Error()
 }
 
 // Wrap returns an Error that wrap err with wrapper.
@@ -90,28 +86,16 @@ func Wrap(wrapper, err error) error {
 	if wrapper == nil || err == nil {
 		return wrapper
 	}
-	if w, ok := wrapper.(Error); ok {
-		return &customError{
-			msg: w.Msg(),
-			err: cast(err),
-		}
+	if ne, ok := err.(NestError); ok {
+		return ne.Embed(wrapper)
+	}
+	if ce, ok := wrapper.(NestError); ok {
+		return ce.Embed(err)
 	}
 	return &customError{
 		msg: wrapper.Error(),
-		err: cast(err),
+		err: fmt.Errorf("%w: %w", wrapper, err),
 	}
-}
-
-// Unwrap returns the wrapper and the error by separating the Wrapper from the error.
-func Unwrap(err error) (error, error) {
-	if ce, ok := err.(Error); ok {
-		if ce.Err() == nil {
-			return nil, New(ce.Msg())
-		}
-		return New(ce.Msg()), ce.Err()
-	}
-
-	return nil, err
 }
 
 func cast(err error) Error {
