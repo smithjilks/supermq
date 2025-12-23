@@ -98,6 +98,21 @@ func Wrap(wrapper, err error) error {
 	}
 }
 
+// Unwrap returns the wrapper and the error by separating the Wrapper from the error.
+func Unwrap(err error) (error, error) {
+	if err == nil {
+		return nil, nil
+	}
+	if ce, ok := err.(Error); ok {
+		if ce.Err() == nil {
+			return nil, New(ce.Msg())
+		}
+		return New(ce.Msg()), ce.Err()
+	}
+
+	return nil, err
+}
+
 func cast(err error) Error {
 	if err == nil {
 		return nil
