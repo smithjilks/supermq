@@ -15,8 +15,6 @@ import (
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 )
 
-const patPrefix = "pat_"
-
 type authentication struct {
 	authSvcClient grpcAuthV1.AuthServiceClient
 }
@@ -46,7 +44,7 @@ func (a authentication) Authenticate(ctx context.Context, token string) (authn.S
 		return authn.Session{}, errors.Wrap(errors.ErrAuthentication, err)
 	}
 
-	if strings.HasPrefix(token, patPrefix) {
+	if strings.HasPrefix(token, authn.PatPrefix) {
 		return authn.Session{Type: authn.PersonalAccessToken, PatID: res.GetId(), UserID: res.GetUserId(), Role: authn.Role(res.GetUserRole())}, nil
 	}
 

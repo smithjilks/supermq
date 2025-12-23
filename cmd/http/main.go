@@ -22,11 +22,13 @@ import (
 	grpcChannelsV1 "github.com/absmach/supermq/api/grpc/channels/v1"
 	grpcClientsV1 "github.com/absmach/supermq/api/grpc/clients/v1"
 	grpcDomainsV1 "github.com/absmach/supermq/api/grpc/domains/v1"
+	"github.com/absmach/supermq/auth"
 	adapter "github.com/absmach/supermq/http"
 	httpapi "github.com/absmach/supermq/http/api"
 	smqlog "github.com/absmach/supermq/logger"
 	smqauthn "github.com/absmach/supermq/pkg/authn"
-	"github.com/absmach/supermq/pkg/authn/authsvc"
+	authsvcAuthn "github.com/absmach/supermq/pkg/authn/authsvc"
+	jwksAuthn "github.com/absmach/supermq/pkg/authn/jwks"
 	domainsAuthz "github.com/absmach/supermq/pkg/domains/grpcclient"
 	"github.com/absmach/supermq/pkg/grpcclient"
 	jaegerclient "github.com/absmach/supermq/pkg/jaeger"
@@ -60,13 +62,15 @@ const (
 )
 
 type config struct {
-	LogLevel      string  `env:"SMQ_HTTP_ADAPTER_LOG_LEVEL"   envDefault:"info"`
-	BrokerURL     string  `env:"SMQ_MESSAGE_BROKER_URL"       envDefault:"nats://localhost:4222"`
-	JaegerURL     url.URL `env:"SMQ_JAEGER_URL"               envDefault:"http://localhost:4318/v1/traces"`
-	SendTelemetry bool    `env:"SMQ_SEND_TELEMETRY"           envDefault:"true"`
-	InstanceID    string  `env:"SMQ_HTTP_ADAPTER_INSTANCE_ID" envDefault:""`
-	TraceRatio    float64 `env:"SMQ_JAEGER_TRACE_RATIO"       envDefault:"1.0"`
-	ESURL         string  `env:"SMQ_ES_URL"                   envDefault:"nats://localhost:4222"`
+	LogLevel         string  `env:"SMQ_HTTP_ADAPTER_LOG_LEVEL"   envDefault:"info"`
+	BrokerURL        string  `env:"SMQ_MESSAGE_BROKER_URL"       envDefault:"nats://localhost:4222"`
+	JaegerURL        url.URL `env:"SMQ_JAEGER_URL"               envDefault:"http://localhost:4318/v1/traces"`
+	SendTelemetry    bool    `env:"SMQ_SEND_TELEMETRY"           envDefault:"true"`
+	InstanceID       string  `env:"SMQ_HTTP_ADAPTER_INSTANCE_ID" envDefault:""`
+	TraceRatio       float64 `env:"SMQ_JAEGER_TRACE_RATIO"       envDefault:"1.0"`
+	ESURL            string  `env:"SMQ_ES_URL"                   envDefault:"nats://localhost:4222"`
+	AuthKeyAlgorithm string  `env:"SMQ_AUTH_KEYS_ALGORITHM"      envDefault:"RS256"`
+	JWKSURL          string  `env:"SMQ_AUTH_JWKS_URL"            envDefault:"http://auth:9001/keys/.well-known/jwks.json"`
 }
 
 func main() {
@@ -163,14 +167,34 @@ func main() {
 		return
 	}
 
-	authn, authnHandler, err := authsvc.NewAuthentication(ctx, authnCfg)
+	isSymmetric, err := auth.IsSymmetricAlgorithm(cfg.AuthKeyAlgorithm)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error(fmt.Sprintf("failed to parse auth key algorithm : %s", err))
 		exitCode = 1
 		return
 	}
-	defer authnHandler.Close()
-	logger.Info("authn successfully connected to auth gRPC server " + authnHandler.Secure())
+	var authn smqauthn.Authentication
+	var authnClient grpcclient.Handler
+	switch {
+	case !isSymmetric:
+		authn, authnClient, err = jwksAuthn.NewAuthentication(ctx, cfg.JWKSURL, authnCfg)
+		if err != nil {
+			logger.Error(err.Error())
+			exitCode = 1
+			return
+		}
+		defer authnClient.Close()
+		logger.Info("AuthN successfully set up jwks authentication on " + cfg.JWKSURL)
+	default:
+		authn, authnClient, err = authsvcAuthn.NewAuthentication(ctx, authnCfg)
+		if err != nil {
+			logger.Error(err.Error())
+			exitCode = 1
+			return
+		}
+		defer authnClient.Close()
+		logger.Info("AuthN successfully connected to auth gRPC server " + authnClient.Secure())
+	}
 
 	tp, err := jaegerclient.NewProvider(ctx, svcName, cfg.JaegerURL, cfg.InstanceID, cfg.TraceRatio)
 	if err != nil {

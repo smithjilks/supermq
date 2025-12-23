@@ -15,10 +15,10 @@ import (
 )
 
 // MakeHandler returns a HTTP handler for API endpoints.
-func MakeHandler(svc auth.Service, logger *slog.Logger, instanceID string) http.Handler {
+func MakeHandler(svc auth.Service, logger *slog.Logger, instanceID string, jwksCacheMaxAge, jwksCacheStaleWhileRevalidate int) http.Handler {
 	mux := chi.NewRouter()
 
-	mux = keys.MakeHandler(svc, mux, logger)
+	mux = keys.MakeHandler(svc, mux, logger, jwksCacheMaxAge, jwksCacheStaleWhileRevalidate)
 	mux = pats.MakeHandler(svc, mux, logger)
 
 	mux.Get("/health", supermq.Health("auth", instanceID))

@@ -4,16 +4,21 @@
 package keys
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/absmach/supermq"
 	"github.com/absmach/supermq/auth"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
 var (
 	_ supermq.Response = (*issueKeyRes)(nil)
 	_ supermq.Response = (*revokeKeyRes)(nil)
+	_ supermq.Response = (*retrieveKeyRes)(nil)
+	_ supermq.Response = (*retrieveJWKSRes)(nil)
 )
 
 type issueKeyRes struct {
@@ -68,4 +73,38 @@ func (res revokeKeyRes) Headers() map[string]string {
 
 func (res revokeKeyRes) Empty() bool {
 	return true
+}
+
+type retrieveJWKSRes struct {
+	Keys                      []auth.JWK `json:"-"`
+	CacheMaxAge               int        `json:"-"`
+	CacheStaleWhileRevalidate int        `json:"-"`
+}
+
+func (res retrieveJWKSRes) MarshalJSON() ([]byte, error) {
+	set := jwk.NewSet()
+	for _, k := range res.Keys {
+		if err := set.AddKey(k.Key()); err != nil {
+			return nil, err
+		}
+	}
+
+	return json.Marshal(set)
+}
+
+func (res retrieveJWKSRes) Code() int {
+	return http.StatusOK
+}
+
+func (res retrieveJWKSRes) Headers() map[string]string {
+	cacheControl := fmt.Sprintf("public, max-age=%d, stale-while-revalidate=%d", res.CacheMaxAge, res.CacheStaleWhileRevalidate)
+	headers := map[string]string{
+		"Cache-Control": cacheControl,
+	}
+
+	return headers
+}
+
+func (res retrieveJWKSRes) Empty() bool {
+	return false
 }

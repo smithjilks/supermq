@@ -46,3 +46,5 @@ func (req keyReq) validate() error {
 	}
 	return nil
 }
+
+type jwksReq struct{}

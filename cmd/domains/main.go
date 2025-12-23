@@ -15,6 +15,7 @@ import (
 	chclient "github.com/absmach/callhome/pkg/client"
 	"github.com/absmach/supermq"
 	grpcDomainsV1 "github.com/absmach/supermq/api/grpc/domains/v1"
+	"github.com/absmach/supermq/auth"
 	"github.com/absmach/supermq/domains"
 	domainsSvc "github.com/absmach/supermq/domains"
 	domainsgrpcapi "github.com/absmach/supermq/domains/api/grpc"
@@ -28,6 +29,7 @@ import (
 	smqlog "github.com/absmach/supermq/logger"
 	smqauthn "github.com/absmach/supermq/pkg/authn"
 	authsvcAuthn "github.com/absmach/supermq/pkg/authn/authsvc"
+	jwksAuthn "github.com/absmach/supermq/pkg/authn/jwks"
 	"github.com/absmach/supermq/pkg/authz"
 	authsvcAuthz "github.com/absmach/supermq/pkg/authz/authsvc"
 	"github.com/absmach/supermq/pkg/callout"
@@ -83,6 +85,8 @@ type config struct {
 	SpicedbPreSharedKey string        `env:"SMQ_SPICEDB_PRE_SHARED_KEY"       envDefault:"12345678"`
 	TraceRatio          float64       `env:"SMQ_JAEGER_TRACE_RATIO"           envDefault:"1.0"`
 	ESURL               string        `env:"SMQ_ES_URL"                       envDefault:"nats://localhost:4222"`
+	AuthKeyAlgorithm    string        `env:"SMQ_AUTH_KEYS_ALGORITHM"          envDefault:"RS256"`
+	JWKSURL             string        `env:"SMQ_AUTH_JWKS_URL"                envDefault:"http://auth:9001/keys/.well-known/jwks.json"`
 	PermissionsFile     string        `env:"SMQ_PERMISSIONS_FILE"             envDefault:"permission.yaml"`
 }
 
@@ -153,14 +157,34 @@ func main() {
 		return
 	}
 
-	authn, authnHandler, err := authsvcAuthn.NewAuthentication(ctx, clientConfig)
+	isSymmetric, err := auth.IsSymmetricAlgorithm(cfg.AuthKeyAlgorithm)
 	if err != nil {
-		logger.Error(fmt.Sprintf("authn failed to connect to auth gRPC server : %s", err.Error()))
+		logger.Error(fmt.Sprintf("failed to parse auth key algorithm : %s", err))
 		exitCode = 1
 		return
 	}
-	defer authnHandler.Close()
-	logger.Info("Authn successfully connected to auth gRPC server " + authnHandler.Secure())
+	var authn smqauthn.Authentication
+	var authnClient grpcclient.Handler
+	switch {
+	case !isSymmetric:
+		authn, authnClient, err = jwksAuthn.NewAuthentication(ctx, cfg.JWKSURL, clientConfig)
+		if err != nil {
+			logger.Error(err.Error())
+			exitCode = 1
+			return
+		}
+		defer authnClient.Close()
+		logger.Info("AuthN successfully set up jwks authentication on " + cfg.JWKSURL)
+	default:
+		authn, authnClient, err = authsvcAuthn.NewAuthentication(ctx, clientConfig)
+		if err != nil {
+			logger.Error(err.Error())
+			exitCode = 1
+			return
+		}
+		defer authnClient.Close()
+		logger.Info("AuthN successfully connected to auth gRPC server " + authnClient.Secure())
+	}
 	authnMiddleware := smqauthn.NewAuthNMiddleware(authn)
 
 	database := postgres.NewDatabase(db, dbConfig, tracer)

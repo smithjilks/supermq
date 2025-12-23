@@ -19,6 +19,8 @@ const (
 	PersonalAccessToken
 )
 
+const PatPrefix = "pat_"
+
 func (t TokenType) String() string {
 	switch t {
 	case AccessToken:

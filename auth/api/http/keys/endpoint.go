@@ -85,3 +85,15 @@ func revokeEndpoint(svc auth.Service) endpoint.Endpoint {
 		return revokeKeyRes{}, nil
 	}
 }
+
+func retrieveJWKSEndpoint(svc auth.Service, jwksCacheMaxAge, jwksCacheStaleWhileRevalidate int) endpoint.Endpoint {
+	return func(ctx context.Context, request any) (any, error) {
+		jwks := svc.RetrieveJWKS()
+
+		return retrieveJWKSRes{
+			Keys:                      jwks,
+			CacheMaxAge:               jwksCacheMaxAge,
+			CacheStaleWhileRevalidate: jwksCacheStaleWhileRevalidate,
+		}, nil
+	}
+}
