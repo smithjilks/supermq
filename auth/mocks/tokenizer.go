@@ -169,22 +169,31 @@ func (_c *Tokenizer_Parse_Call) RunAndReturn(run func(ctx context.Context, token
 }
 
 // RetrieveJWKS provides a mock function for the type Tokenizer
-func (_mock *Tokenizer) RetrieveJWKS() []auth.JWK {
+func (_mock *Tokenizer) RetrieveJWKS() ([]auth.PublicKeyInfo, error) {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveJWKS")
 	}
 
-	var r0 []auth.JWK
-	if returnFunc, ok := ret.Get(0).(func() []auth.JWK); ok {
+	var r0 []auth.PublicKeyInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]auth.PublicKeyInfo, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []auth.PublicKeyInfo); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]auth.JWK)
+			r0 = ret.Get(0).([]auth.PublicKeyInfo)
 		}
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // Tokenizer_RetrieveJWKS_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveJWKS'
@@ -204,12 +213,12 @@ func (_c *Tokenizer_RetrieveJWKS_Call) Run(run func()) *Tokenizer_RetrieveJWKS_C
 	return _c
 }
 
-func (_c *Tokenizer_RetrieveJWKS_Call) Return(jWKs []auth.JWK) *Tokenizer_RetrieveJWKS_Call {
-	_c.Call.Return(jWKs)
+func (_c *Tokenizer_RetrieveJWKS_Call) Return(publicKeyInfos []auth.PublicKeyInfo, err error) *Tokenizer_RetrieveJWKS_Call {
+	_c.Call.Return(publicKeyInfos, err)
 	return _c
 }
 
-func (_c *Tokenizer_RetrieveJWKS_Call) RunAndReturn(run func() []auth.JWK) *Tokenizer_RetrieveJWKS_Call {
+func (_c *Tokenizer_RetrieveJWKS_Call) RunAndReturn(run func() ([]auth.PublicKeyInfo, error)) *Tokenizer_RetrieveJWKS_Call {
 	_c.Call.Return(run)
 	return _c
 }

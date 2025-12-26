@@ -22,11 +22,10 @@ import (
 	httpapi "github.com/absmach/supermq/auth/api/http"
 	"github.com/absmach/supermq/auth/cache"
 	"github.com/absmach/supermq/auth/hasher"
-	"github.com/absmach/supermq/auth/jwt"
-	"github.com/absmach/supermq/auth/keymanager/asymmetric"
-	"github.com/absmach/supermq/auth/keymanager/symmetric"
 	"github.com/absmach/supermq/auth/middleware"
 	apostgres "github.com/absmach/supermq/auth/postgres"
+	"github.com/absmach/supermq/auth/tokenizer/asymmetric"
+	"github.com/absmach/supermq/auth/tokenizer/symmetric"
 	redisclient "github.com/absmach/supermq/internal/clients/redis"
 	smqlog "github.com/absmach/supermq/logger"
 	"github.com/absmach/supermq/pkg/jaeger"
@@ -69,7 +68,8 @@ type config struct {
 	AccessDuration                time.Duration `env:"SMQ_AUTH_ACCESS_TOKEN_DURATION"             envDefault:"1h"`
 	RefreshDuration               time.Duration `env:"SMQ_AUTH_REFRESH_TOKEN_DURATION"            envDefault:"24h"`
 	KeyAlgorithm                  string        `env:"SMQ_AUTH_KEYS_ALGORITHM"                    envDefault:"EdDSA"`
-	PrivateKeyPath                string        `env:"SMQ_AUTH_KEYS_PRIVATE_KEY_PATH"             envDefault:"./ssl/keys/private.pem"`
+	ActiveKeyPath                 string        `env:"SMQ_AUTH_KEYS_ACTIVE_KEY_PATH"              envDefault:"./keys/active.key"`
+	RetiringKeyPath               string        `env:"SMQ_AUTH_KEYS_RETIRING_KEY_PATH"            envDefault:""`
 	InvitationDuration            time.Duration `env:"SMQ_AUTH_INVITATION_DURATION"               envDefault:"168h"`
 	SpicedbHost                   string        `env:"SMQ_SPICEDB_HOST"                           envDefault:"localhost"`
 	SpicedbPort                   string        `env:"SMQ_SPICEDB_PORT"                           envDefault:"50051"`
@@ -159,17 +159,23 @@ func main() {
 
 	idProvider := uuid.New()
 
-	var keyManager auth.KeyManager
+	if err := validateKeyConfig(isSymmetric, cfg, logger); err != nil {
+		logger.Error(fmt.Sprintf("invalid key configuration: %s", err.Error()))
+		exitCode = 1
+		return
+	}
+
+	var tokenizer auth.Tokenizer
 	switch {
 	case isSymmetric:
-		keyManager, err = symmetric.NewKeyManager(cfg.KeyAlgorithm, []byte(cfg.SecretKey))
+		tokenizer, err = symmetric.NewTokenizer(cfg.KeyAlgorithm, []byte(cfg.SecretKey))
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to create symmetric key manager: %s", err.Error()))
 			exitCode = 1
 			return
 		}
 	default:
-		keyManager, err = asymmetric.NewKeyManager(cfg.PrivateKeyPath, idProvider)
+		tokenizer, err = asymmetric.NewTokenizer(cfg.ActiveKeyPath, cfg.RetiringKeyPath, idProvider, logger)
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to create asymmetric key manager: %s", err.Error()))
 			exitCode = 1
@@ -177,7 +183,7 @@ func main() {
 		}
 	}
 
-	svc, err := newService(db, tracer, cfg, dbConfig, logger, spicedbclient, cacheclient, cfg.CacheKeyDuration, keyManager, idProvider)
+	svc, err := newService(db, tracer, cfg, dbConfig, logger, spicedbclient, cacheclient, cfg.CacheKeyDuration, tokenizer, idProvider)
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to create service : %s\n", err.Error()))
 		exitCode = 1
@@ -258,7 +264,34 @@ func initSchema(ctx context.Context, client *authzed.ClientWithExperimental, sch
 	return nil
 }
 
-func newService(db *sqlx.DB, tracer trace.Tracer, cfg config, dbConfig pgclient.Config, logger *slog.Logger, spicedbClient *authzed.ClientWithExperimental, cacheClient *redis.Client, keyDuration time.Duration, keyManager auth.KeyManager, idProvider supermq.IDProvider) (auth.Service, error) {
+func validateKeyConfig(isSymmetric bool, cfg config, l *slog.Logger) error {
+	if isSymmetric {
+		if cfg.SecretKey == "secret" {
+			return fmt.Errorf("default secret key is insecure - please set SMQ_AUTH_SECRET_KEY environment variable")
+		}
+		return nil
+	}
+
+	// Validate active key path
+	_, err := os.Stat(cfg.ActiveKeyPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("active key file not found: %s - please set SMQ_AUTH_KEYS_ACTIVE_KEY_PATH", cfg.ActiveKeyPath)
+		}
+		return fmt.Errorf("failed to access active key file: %w", err)
+	}
+
+	// Retiring key is optional - only validate if path is provided
+	if cfg.RetiringKeyPath != "" {
+		if _, err := os.Stat(cfg.RetiringKeyPath); err != nil {
+			l.Warn("retiring key path provided but file not accessible", slog.Any("error", err))
+		}
+	}
+
+	return nil
+}
+
+func newService(db *sqlx.DB, tracer trace.Tracer, cfg config, dbConfig pgclient.Config, logger *slog.Logger, spicedbClient *authzed.ClientWithExperimental, cacheClient *redis.Client, keyDuration time.Duration, tokenizer auth.Tokenizer, idProvider supermq.IDProvider) (auth.Service, error) {
 	cache := cache.NewPatsCache(cacheClient, keyDuration)
 
 	database := pgclient.NewDatabase(db, dbConfig, tracer)
@@ -268,8 +301,6 @@ func newService(db *sqlx.DB, tracer trace.Tracer, cfg config, dbConfig pgclient.
 
 	pEvaluator := spicedb.NewPolicyEvaluator(spicedbClient, logger)
 	pService := spicedb.NewPolicyService(spicedbClient, logger)
-
-	tokenizer := jwt.New(keyManager)
 
 	svc := auth.New(keysRepo, patsRepo, nil, hasher, idProvider, tokenizer, pEvaluator, pService, cfg.AccessDuration, cfg.RefreshDuration, cfg.InvitationDuration)
 	svc = middleware.NewLogging(svc, logger)

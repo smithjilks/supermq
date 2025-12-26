@@ -4,47 +4,57 @@
 package auth
 
 import (
+	"context"
 	"errors"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 var (
 	ErrUnsupportedKeyAlgorithm = errors.New("unsupported key algorithm")
 	ErrInvalidSymmetricKey     = errors.New("invalid symmetric key")
+	ErrPublicKeysNotSupported  = errors.New("public keys not supported for symmetric algorithm")
 )
 
-// JWK represents a JSON Web Key.
-type JWK struct {
-	key jwk.Key
+// PublicKeyInfo represents a public key for external distribution via JWKS.
+// This follows RFC 7517 (JSON Web Key) specification.
+type PublicKeyInfo struct {
+	KeyID     string `json:"kid"`
+	KeyType   string `json:"kty"`
+	Algorithm string `json:"alg"`
+	Use       string `json:"use,omitempty"`
+
+	// EdDSA (Ed25519) fields
+	Curve string `json:"crv,omitempty"`
+	X     string `json:"x,omitempty"`
+
+	// Future: RSA fields (n, e), ECDSA fields (x, y, crv), etc.
 }
 
-// NewJWK creates a new JWK from a jwk.Key.
-func NewJWK(key jwk.Key) JWK {
-	return JWK{key: key}
+// Tokenizer handles token creation and verification for authentication.
+// Implementations manage underlying cryptographic operations and key distribution.
+type Tokenizer interface {
+	// Issue creates a signed token string from the given key claims.
+	Issue(key Key) (token string, err error)
+
+	// Parse verifies and parses a token string (JWT or PAT), returning the extracted claims.
+	// For PAT tokens (prefix "pat"), returns a Key with Type set to PersonalAccessToken.
+	// For JWT tokens, performs cryptographic verification and returns the parsed claims.
+	Parse(ctx context.Context, token string) (key Key, err error)
+
+	// RetrieveJWKS returns public keys for distribution via JWKS endpoint.
+	// Returns ErrPublicKeysNotSupported for symmetric tokenizers (HMAC).
+	RetrieveJWKS() ([]PublicKeyInfo, error)
 }
 
-// Key returns the underlying jwk.Key.
-func (j JWK) Key() jwk.Key {
-	return j.key
-}
-
-// KeyManager represents a manager for JWT keys.
-type KeyManager interface {
-	SignJWT(token jwt.Token) ([]byte, error)
-
-	ParseJWT(token string) (jwt.Token, error)
-
-	PublicJWKS() []JWK
-}
-
+// IsSymmetricAlgorithm determines if the given algorithm is symmetric (HMAC-based).
+// Returns true for HMAC algorithms (HS256, HS384, HS512).
+// Returns false for asymmetric algorithms (EdDSA).
+// Returns error for unsupported algorithms.
 func IsSymmetricAlgorithm(alg string) (bool, error) {
 	switch alg {
-	case "HS256", "HS384", "HS512":
-		return true, nil
 	case "EdDSA":
 		return false, nil
+	case "HS256", "HS384", "HS512":
+		return true, nil
 	default:
 		return false, ErrUnsupportedKeyAlgorithm
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/absmach/supermq"
 	"github.com/absmach/supermq/pkg/errors"
+	repoerr "github.com/absmach/supermq/pkg/errors/repository"
 	svcerr "github.com/absmach/supermq/pkg/errors/service"
 	"github.com/absmach/supermq/pkg/policies"
 	"github.com/google/uuid"
@@ -84,8 +85,8 @@ type Authn interface {
 	// other reason, non-nil error value is returned in response.
 	Identify(ctx context.Context, token string) (Key, error)
 
-	// RetrieveJWKS retrieves a JWKs to validate issued tokens.
-	RetrieveJWKS() []JWK
+	// RetrieveJWKS retrieves public keys to validate issued tokens.
+	RetrieveJWKS() []PublicKeyInfo
 }
 
 // Service specifies an API that must be fulfilled by the domain service
@@ -201,8 +202,12 @@ func (svc service) Identify(ctx context.Context, token string) (Key, error) {
 	}
 }
 
-func (svc service) RetrieveJWKS() []JWK {
-	return svc.tokenizer.RetrieveJWKS()
+func (svc service) RetrieveJWKS() []PublicKeyInfo {
+	keys, err := svc.tokenizer.RetrieveJWKS()
+	if err != nil {
+		return nil
+	}
+	return keys
 }
 
 func (svc service) Authorize(ctx context.Context, pr policies.Policy) error {
@@ -803,6 +808,9 @@ func (svc service) authnAuthzUserPAT(ctx context.Context, token, patID string) (
 
 	_, err = svc.pats.Retrieve(ctx, key.Subject, patID)
 	if err != nil {
+		if errors.Contains(err, repoerr.ErrNotFound) {
+			return Key{}, svcerr.ErrNotFound
+		}
 		return Key{}, errors.Wrap(svcerr.ErrAuthorization, err)
 	}
 
