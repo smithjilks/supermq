@@ -100,7 +100,7 @@ FILTERED_SERVICES = $(filter-out $(RUN_ADDON_ARGS), $(SERVICES))
 
 all: $(SERVICES)
 
-.PHONY: all $(SERVICES) dockers dockers_dev latest release run run_addons grpc_mtls_certs check_mtls check_certs test_api mocks
+.PHONY: all $(SERVICES) dockers dockers_dev latest release run_latest run_stable run_addons grpc_mtls_certs check_mtls check_certs test_api mocks
 
 clean:
 	rm -rf ${BUILD_DIR}
@@ -268,7 +268,15 @@ endif
 fetch_certs:
 	@./scripts/certs.sh
 
-run: check_certs
+run_latest: check_certs
+	git checkout main
+	sed -i 's/^SMQ_RELEASE_TAG=.*/SMQ_RELEASE_TAG=latest/' docker/.env
+	docker compose -f docker/docker-compose.yaml --env-file docker/.env -p $(DOCKER_PROJECT) $(DOCKER_COMPOSE_COMMAND) $(args)
+
+run_stable: check_certs
+	$(eval version = $(shell git describe --abbrev=0 --tags))
+	git checkout $(version)
+	sed -i 's/^SMQ_RELEASE_TAG=.*/SMQ_RELEASE_TAG=$(version)/' docker/.env
 	docker compose -f docker/docker-compose.yaml --env-file docker/.env -p $(DOCKER_PROJECT) $(DOCKER_COMPOSE_COMMAND) $(args)
 
 run_addons: check_certs

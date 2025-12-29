@@ -45,21 +45,44 @@ SuperMQ bridges the gap between various network protocols (HTTP, MQTT, WebSocket
 
 ## Installation 🛠️
 
-Clone the repository and start SuperMQ services:
+There are multiple ways to run SuperMQ.
+First, clone the repository and position to it:
 
 ```bash
 git clone https://github.com/absmach/supermq.git
 cd supermq
-docker compose -f docker/docker-compose.yaml --env-file docker/.env up
 ```
 
-Or use the [Makefile](Makefile) for a simpler command:
+To run the latest stable (tagged) version, use:
 
 ```bash
-make run
+# Run with latest stable tagged version
+make run_stable
 ```
 
-For production deployments, check our [Kubernetes guide](https://docs.supermq.absmach.eu/kubernetes). ⚙️
+To run the latest version, use:
+
+```bash
+# Run with latest development version (from main branch)
+make run_latest
+```
+
+The `make run_stable` command will:
+- Checkout the repository to the latest git tag
+- Update the version in the environment configuration
+- Start the services with the stable release
+
+**Note:** After running `make run_stable`, you'll be on a detached HEAD state. To return to your working branch:
+
+```bash
+git checkout main
+```
+
+To manually run SuperMQ, clone the repository and start all core services:
+
+```bash
+docker compose -f docker/docker-compose.yaml --env-file docker/.env up
+```
 
 ### Usage 📤📥
 
