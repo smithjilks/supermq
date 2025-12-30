@@ -3,10 +3,7 @@
 
 package errors
 
-import (
-	"errors"
-	"fmt"
-)
+const internalServiceError = "internal server error"
 
 type NestError interface {
 	Error
@@ -22,31 +19,30 @@ func (e *customError) Embed(err error) error {
 
 	return &customError{
 		msg: e.msg,
-		err: fmt.Errorf("%w: %w", e.err, err),
+		err: Wrap(err, e.err),
 	}
+}
+
+type nestableError interface {
+	NestError
+	isNestable()
 }
 
 type RequestError struct {
 	customError
 }
 
-var _ NestError = (*RequestError)(nil)
+var _ nestableError = (*RequestError)(nil)
 
 func NewRequestError(message string) NestError {
 	return &RequestError{
-		customError: customError{
-			msg: message,
-			err: errors.New(message),
-		},
+		customError: newCustomError(message),
 	}
 }
 
 func NewRequestErrorWithErr(message string, err error) NestError {
 	return &RequestError{
-		customError: customError{
-			msg: message,
-			err: fmt.Errorf("%w: %w", errors.New(message), err),
-		},
+		customError: newCustomErrorWithError(message, err),
 	}
 }
 
@@ -57,27 +53,23 @@ func (e *RequestError) Embed(err error) error {
 	}
 }
 
+func (*RequestError) isNestable() {}
+
 type AuthNError struct {
 	customError
 }
 
-var _ NestError = (*AuthNError)(nil)
+var _ nestableError = (*AuthNError)(nil)
 
 func NewAuthNError(message string) NestError {
 	return &AuthNError{
-		customError: customError{
-			msg: message,
-			err: errors.New(message),
-		},
+		customError: newCustomError(message),
 	}
 }
 
 func NewAuthNErrorWithErr(message string, err error) NestError {
 	return &AuthNError{
-		customError: customError{
-			msg: message,
-			err: fmt.Errorf("%w: %w", errors.New(message), err),
-		},
+		customError: newCustomErrorWithError(message, err),
 	}
 }
 
@@ -88,7 +80,9 @@ func (e *AuthNError) Embed(err error) error {
 	}
 }
 
-var _ NestError = (*AuthZError)(nil)
+func (*AuthNError) isNestable() {}
+
+var _ nestableError = (*AuthZError)(nil)
 
 type AuthZError struct {
 	customError
@@ -103,43 +97,33 @@ func (e *AuthZError) Embed(err error) error {
 
 func NewAuthZError(message string) NestError {
 	return &AuthZError{
-		customError: customError{
-			msg: message,
-			err: errors.New(message),
-		},
+		customError: newCustomError(message),
 	}
 }
 
 func NewAuthZErrorWithErr(message string, err error) NestError {
 	return &AuthZError{
-		customError: customError{
-			msg: message,
-			err: fmt.Errorf("%w: %w", errors.New(message), err),
-		},
+		customError: newCustomErrorWithError(message, err),
 	}
 }
+
+func (*AuthZError) isNestable() {}
 
 type InternalError struct {
 	customError
 }
 
-var _ NestError = (*InternalError)(nil)
+var _ nestableError = (*InternalError)(nil)
 
 func NewInternalError() error {
 	return &InternalError{
-		customError: customError{
-			msg: "internal server error",
-			err: errors.New("internal server error"),
-		},
+		customError: newCustomError(internalServiceError),
 	}
 }
 
 func NewInternalErrorWithErr(err error) NestError {
 	return &InternalError{
-		customError: customError{
-			msg: "internal server error",
-			err: fmt.Errorf("%w: %w", errors.New("internal server error"), err),
-		},
+		customError: newCustomErrorWithError(internalServiceError, err),
 	}
 }
 
@@ -150,27 +134,23 @@ func (e *InternalError) Embed(err error) error {
 	}
 }
 
+func (*InternalError) isNestable() {}
+
 type ServiceError struct {
 	customError
 }
 
-var _ NestError = (*ServiceError)(nil)
+var _ nestableError = (*ServiceError)(nil)
 
 func NewServiceError(message string) NestError {
 	return &ServiceError{
-		customError: customError{
-			msg: message,
-			err: errors.New(message),
-		},
+		customError: newCustomError(message),
 	}
 }
 
 func NewServiceErrorWithErr(message string, err error) NestError {
 	return &ServiceError{
-		customError: customError{
-			msg: message,
-			err: fmt.Errorf("%w: %w", errors.New(message), err),
-		},
+		customError: newCustomErrorWithError(message, err),
 	}
 }
 
@@ -181,27 +161,23 @@ func (e *ServiceError) Embed(err error) error {
 	}
 }
 
+func (*ServiceError) isNestable() {}
+
 type MediaTypeError struct {
 	customError
 }
 
-var _ NestError = (*MediaTypeError)(nil)
+var _ nestableError = (*MediaTypeError)(nil)
 
 func NewMediaTypeError(message string) NestError {
 	return &MediaTypeError{
-		customError: customError{
-			msg: message,
-			err: errors.New(message),
-		},
+		customError: newCustomError(message),
 	}
 }
 
 func NewMediaTypeErrorWithErr(message string, err error) NestError {
 	return &MediaTypeError{
-		customError: customError{
-			msg: message,
-			err: fmt.Errorf("%w: %w", errors.New(message), err),
-		},
+		customError: newCustomErrorWithError(message, err),
 	}
 }
 
@@ -212,27 +188,23 @@ func (e *MediaTypeError) Embed(err error) error {
 	}
 }
 
+func (*MediaTypeError) isNestable() {}
+
 type NotFoundError struct {
 	customError
 }
 
-var _ NestError = (*NotFoundError)(nil)
+var _ nestableError = (*NotFoundError)(nil)
 
 func NewNotFoundError(message string) NestError {
 	return &NotFoundError{
-		customError: customError{
-			msg: message,
-			err: errors.New(message),
-		},
+		customError: newCustomError(message),
 	}
 }
 
 func NewNotFoundErrorWithErr(message string, err error) NestError {
 	return &NotFoundError{
-		customError: customError{
-			msg: message,
-			err: fmt.Errorf("%w: %w", errors.New(message), err),
-		},
+		customError: newCustomErrorWithError(message, err),
 	}
 }
 
@@ -242,3 +214,5 @@ func (e *NotFoundError) Embed(err error) error {
 		customError: *embedded.(*customError),
 	}
 }
+
+func (*NotFoundError) isNestable() {}

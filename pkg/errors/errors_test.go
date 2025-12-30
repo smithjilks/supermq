@@ -41,21 +41,21 @@ func TestError(t *testing.T) {
 			desc:     "level 1 wrapped error",
 			err:      wrap(1),
 			msg:      message(1),
-			bytes:    []byte(`{"message":"0"}`),
+			bytes:    []byte(`{"message":"1"}`),
 			bytesErr: nil,
 		},
 		{
 			desc:     "level 2 wrapped error",
 			err:      wrap(2),
 			msg:      message(2),
-			bytes:    []byte(`{"message":"0"}`),
+			bytes:    []byte(`{"message":"2"}`),
 			bytesErr: nil,
 		},
 		{
 			desc:     fmt.Sprintf("level %d wrapped error", level),
 			err:      wrap(level),
 			msg:      message(level),
-			bytes:    []byte(`{"message":"0"}`),
+			bytes:    []byte(`{"message":"10"}`),
 			bytesErr: nil,
 		},
 		{
@@ -80,6 +80,9 @@ func TestError(t *testing.T) {
 }
 
 func TestContains(t *testing.T) {
+	internalErr1 := errors.New("some internal error 1")
+	internalErr2 := errors.New("some internal error 2")
+	internalErr3 := errors.New("some internal error 3")
 	cases := []struct {
 		desc      string
 		container error
@@ -162,6 +165,42 @@ func TestContains(t *testing.T) {
 			desc:      "res of errors.Wrap(errors.New(''), err0) contains err0",
 			container: errors.Wrap(nat, err0),
 			contained: err0,
+			contains:  true,
+		},
+		{
+			desc:      "check nested errors contains errors by adding error in creation",
+			container: errors.NewAuthNErrorWithErr("failed to authenticate", internalErr1),
+			contained: internalErr1,
+			contains:  true,
+		},
+		{
+			desc:      "check nested errors contains errors by adding error in creation (middle)",
+			container: errors.Wrap(errors.NewAuthNErrorWithErr("failed to authenticate", internalErr1), internalErr2),
+			contained: internalErr2,
+			contains:  true,
+		},
+		{
+			desc:      "check nested errors contains errors by adding error in creation",
+			container: errors.Wrap(errors.Wrap(errors.NewAuthNErrorWithErr("failed to authenticate", internalErr1), internalErr2), internalErr3),
+			contained: internalErr1,
+			contains:  true,
+		},
+		{
+			desc:      "check nested errors contains errors by adding error in creation (middle chain)",
+			container: errors.Wrap(errors.Wrap(errors.NewAuthNErrorWithErr("failed to authenticate", internalErr1), internalErr2), internalErr3),
+			contained: internalErr2,
+			contains:  true,
+		},
+		{
+			desc:      "check nested errors contains errors by adding error in creation (outer chain)",
+			container: errors.Wrap(errors.Wrap(errors.NewAuthNErrorWithErr("failed to authenticate", internalErr1), internalErr2), internalErr3),
+			contained: internalErr3,
+			contains:  true,
+		},
+		{
+			desc:      "check nested errors contains errors by wrapping",
+			container: errors.Wrap(errors.NewAuthNError("failed to authenticate"), internalErr1),
+			contained: internalErr1,
 			contains:  true,
 		},
 	}
@@ -286,8 +325,8 @@ func TestUnwrap(t *testing.T) {
 		{
 			desc:    "err 1 wraped err 2",
 			err:     errors.Wrap(err1, err2),
-			wrapper: err2,
-			wrapped: fmt.Errorf("%w: %w", err2, err1),
+			wrapper: err1,
+			wrapped: err2,
 		},
 		{
 			desc:    "nil wraps nil",
@@ -334,10 +373,10 @@ func wrap(level int) error {
 }
 
 // message generates error message of wrap() generated wrapper error.
-// The error message format is now "innermost: ... : outermost" due to fmt.Errorf wrapping.
+// The error message format is "outermost : ... : innermost".
 func message(level int) string {
-	if level == 0 {
+	if level <= 0 {
 		return "0"
 	}
-	return message(level-1) + ": " + strconv.Itoa(level)
+	return strconv.Itoa(level) + " : " + message(level-1)
 }

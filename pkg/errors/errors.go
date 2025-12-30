@@ -6,7 +6,6 @@ package errors
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 )
 
 // Error specifies an API that must be fullfiled by error type.
@@ -32,11 +31,25 @@ type customError struct {
 	err error
 }
 
+func newCustomError(msg string) customError {
+	return customError{
+		msg: msg,
+		err: nil,
+	}
+}
+
+func newCustomErrorWithError(msg string, err error) customError {
+	return customError{
+		msg: msg,
+		err: err,
+	}
+}
+
 // New returns an Error that formats as the given text.
 func New(text string) Error {
 	return &customError{
 		msg: text,
-		err: errors.New(text),
+		err: nil,
 	}
 }
 
@@ -47,7 +60,7 @@ func (ce *customError) Error() string {
 	if ce.err == nil {
 		return ce.msg
 	}
-	return ce.err.Error()
+	return ce.msg + " : " + ce.err.Error()
 }
 
 func (ce *customError) Msg() string {
@@ -66,6 +79,7 @@ func (ce *customError) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// Contains inspects if e2 error is contained in any layer of e1 error.
 func Contains(e1, e2 error) bool {
 	if e1 == nil || e2 == nil {
 		return e2 == e1
@@ -86,15 +100,15 @@ func Wrap(wrapper, err error) error {
 	if wrapper == nil || err == nil {
 		return wrapper
 	}
-	if ne, ok := err.(NestError); ok {
+	if ne, ok := err.(nestableError); ok {
 		return ne.Embed(wrapper)
 	}
-	if ce, ok := wrapper.(NestError); ok {
+	if ce, ok := wrapper.(nestableError); ok {
 		return ce.Embed(err)
 	}
 	return &customError{
 		msg: wrapper.Error(),
-		err: fmt.Errorf("%w: %w", wrapper, err),
+		err: cast(err),
 	}
 }
 
