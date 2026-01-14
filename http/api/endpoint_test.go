@@ -322,13 +322,15 @@ func TestPublish(t *testing.T) {
 			authCall := authn.On("Authenticate", mock.Anything, tc.key).Return(tc.authnRes1, tc.authnErr)
 			domainsCall := domains.On("RetrieveIDByRoute", mock.Anything, mock.Anything).Return(&grpcCommonV1.RetrieveEntityRes{Entity: &grpcCommonV1.EntityBasic{Id: tc.domainID}}, nil)
 			tc.clientType = policies.ClientType
+			clientID := tc.clientID
 			if tc.bearerToken {
 				tc.clientType = policies.UserType
+				clientID = policies.EncodeDomainUserID(tc.domainID, tc.clientID)
 			}
 			channelsCall := channels.On("Authorize", mock.Anything, &grpcChannelsV1.AuthzReq{
 				DomainId:   tc.domainID,
 				ChannelId:  tc.chanID,
-				ClientId:   tc.clientID,
+				ClientId:   clientID,
 				ClientType: tc.clientType,
 				Type:       uint32(connections.Publish),
 			}).Return(tc.authzRes, tc.authzErr)

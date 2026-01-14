@@ -230,7 +230,7 @@ func (h *handler) authAccess(ctx context.Context, username, password, domainID, 
 		clientType = policies.ClientType
 	}
 
-	id, err := h.authenticate(ctx, clientType, token)
+	id, err := h.authenticate(ctx, clientType, token, domainID)
 	if err != nil {
 		return "", mgate.NewHTTPProxyError(http.StatusUnauthorized, errors.Wrap(svcerr.ErrAuthentication, err))
 	}
@@ -258,14 +258,17 @@ func (h *handler) authAccess(ctx context.Context, username, password, domainID, 
 	return id, nil
 }
 
-func (h *handler) authenticate(ctx context.Context, authType, token string) (string, error) {
+func (h *handler) authenticate(ctx context.Context, authType, token, domainID string) (string, error) {
 	switch authType {
 	case policies.UserType:
 		authnSession, err := h.authn.Authenticate(ctx, token)
 		if err != nil {
 			return "", err
 		}
-		return authnSession.UserID, nil
+		if authnSession.Role == smqauthn.AdminRole {
+			return authnSession.UserID, nil
+		}
+		return policies.EncodeDomainUserID(domainID, authnSession.UserID), nil
 	case policies.ClientType:
 		authnRes, err := h.clients.Authenticate(ctx, &grpcClientsV1.AuthnReq{Token: token})
 		if err != nil {

@@ -126,6 +126,7 @@ func TestAuthPublish(t *testing.T) {
 		domainID   string
 		clientID   string
 		authNToken string
+		superAdmin bool
 		authNRes   *grpcClientsV1.AuthnRes
 		authNRes1  smqauthn.Session
 		authNErr   error
@@ -210,6 +211,23 @@ func TestAuthPublish(t *testing.T) {
 			domainID:   domainID,
 			clientID:   userID,
 			authNRes1:  smqauthn.Session{UserID: userID},
+			authNErr:   nil,
+			authZRes:   &grpcChannelsV1.AuthzRes{Authorized: true},
+			err:        nil,
+		},
+		{
+			desc:       "publish with superadmin token successfully",
+			session:    &tokenSession,
+			topic:      &topic,
+			authKey:    token,
+			payload:    &payload,
+			status:     http.StatusOK,
+			clientType: policies.UserType,
+			chanID:     chanID,
+			domainID:   domainID,
+			clientID:   userID,
+			superAdmin: true,
+			authNRes1:  smqauthn.Session{UserID: userID, Role: smqauthn.AdminRole},
 			authNErr:   nil,
 			authZRes:   &grpcChannelsV1.AuthzRes{Authorized: true},
 			err:        nil,
@@ -341,14 +359,19 @@ func TestAuthPublish(t *testing.T) {
 				ctx = session.NewContext(ctx, tc.session)
 			}
 			tc.clientType = policies.ClientType
+			clientID := tc.clientID
 			if tc.session != nil && strings.HasPrefix(string(tc.session.Password), apiutil.BearerPrefix) {
 				tc.clientType = policies.UserType
+				clientID = policies.EncodeDomainUserID(tc.domainID, tc.clientID)
+				if tc.superAdmin {
+					clientID = tc.clientID
+				}
 			}
 			clientsCall := clients.On("Authenticate", ctx, &grpcClientsV1.AuthnReq{Token: tc.authNToken}).Return(tc.authNRes, tc.authNErr)
 			authCall := authn.On("Authenticate", ctx, mock.Anything).Return(tc.authNRes1, tc.authNErr)
 			channelsCall := channels.On("Authorize", mock.Anything, &grpcChannelsV1.AuthzReq{
 				ClientType: tc.clientType,
-				ClientId:   tc.clientID,
+				ClientId:   clientID,
 				Type:       uint32(connections.Publish),
 				ChannelId:  tc.chanID,
 				DomainId:   tc.domainID,
@@ -417,6 +440,7 @@ func TestAuthSubscribe(t *testing.T) {
 		domainID   string
 		clientID   string
 		authNToken string
+		superAdmin bool
 		authNRes   *grpcClientsV1.AuthnRes
 		authNRes1  smqauthn.Session
 		authNErr   error
@@ -497,6 +521,22 @@ func TestAuthSubscribe(t *testing.T) {
 			domainID:   domainID,
 			clientID:   userID,
 			authNRes1:  smqauthn.Session{UserID: userID},
+			authNErr:   nil,
+			authZRes:   &grpcChannelsV1.AuthzRes{Authorized: true},
+			err:        nil,
+		},
+		{
+			desc:       "subscribe with superadmin token successfully",
+			session:    &tokenSession,
+			topics:     &topics,
+			authKey:    token,
+			status:     http.StatusOK,
+			clientType: policies.UserType,
+			chanID:     chanID,
+			domainID:   domainID,
+			clientID:   userID,
+			superAdmin: true,
+			authNRes1:  smqauthn.Session{UserID: userID, Role: smqauthn.AdminRole},
 			authNErr:   nil,
 			authZRes:   &grpcChannelsV1.AuthzRes{Authorized: true},
 			err:        nil,
@@ -620,14 +660,19 @@ func TestAuthSubscribe(t *testing.T) {
 				ctx = session.NewContext(ctx, tc.session)
 			}
 			tc.clientType = policies.ClientType
+			clientID := tc.clientID
 			if tc.session != nil && strings.HasPrefix(string(tc.session.Password), apiutil.BearerPrefix) {
 				tc.clientType = policies.UserType
+				clientID = policies.EncodeDomainUserID(tc.domainID, tc.clientID)
+				if tc.superAdmin {
+					clientID = tc.clientID
+				}
 			}
 			clientsCall := clients.On("Authenticate", ctx, &grpcClientsV1.AuthnReq{Token: tc.authNToken}).Return(tc.authNRes, tc.authNErr)
 			authCall := authn.On("Authenticate", ctx, mock.Anything).Return(tc.authNRes1, tc.authNErr)
 			channelsCall := channels.On("Authorize", mock.Anything, &grpcChannelsV1.AuthzReq{
 				ClientType: tc.clientType,
-				ClientId:   tc.clientID,
+				ClientId:   clientID,
 				Type:       uint32(connections.Subscribe),
 				ChannelId:  tc.chanID,
 				DomainId:   tc.domainID,
