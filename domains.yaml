@@ -9,11 +9,11 @@ info:
     Some useful links:
     - [The SuperMQ repository](https://github.com/absmach/supermq)
   contact:
-    email: info@abstractmachines.fr
+    email: info@absmach.eu
   license:
     name: Apache 2.0
     url: https://github.com/absmach/supermq/blob/main/LICENSE
-  version: 0.15.1
+  version: 0.18.0
 
 servers:
   - url: http://localhost:9003
@@ -24,22 +24,22 @@ tags:
     description: CRUD operations for your domains
     externalDocs:
       description: Find out more about domains
-      url: https://docs.magistrala.abstractmachines.fr/
+      url: https://docs.supermq.absmach.eu/
   - name: Roles
     description: All operations involving roles for domains
     externalDocs:
       description: Find out more about roles
-      url: https://docs.supermq.abstractmachines.fr/
+      url: https://docs.supermq.absmach.eu/
   - name: Invitations
     description: All operations involving invitations for domains
     externalDocs:
       description: Find out more about Invitations
-      url: https://docs.supermq.abstractmachines.fr/
+      url: https://docs.supermq.absmach.eu/
   - name: Health
     description: Service health check endpoint.
     externalDocs:
       description: Find out more about health check
-      url: https://docs.magistrala.abstractmachines.fr/
+      url: https://docs.supermq.absmach.eu/
 
 paths:
   /domains:
@@ -73,10 +73,16 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Order"
+        - $ref: "#/components/parameters/Direction"
         - $ref: "#/components/parameters/Metadata"
         - $ref: "#/components/parameters/Status"
         - $ref: "#/components/parameters/DomainName"
-        - $ref: "#/components/parameters/Permission"
+        - $ref: "./schemas/roles.yaml#/components/parameters/ActionsQuery"
+        - $ref: "./schemas/roles.yaml#/components/parameters/RoleIDQuery"
+        - $ref: "./schemas/roles.yaml#/components/parameters/RoleNameQuery"
+        - $ref: "#/components/parameters/AccessType"
+        - $ref: "#/components/parameters/OnlyTotal"
       tags:
         - Domains
       security:
@@ -757,17 +763,18 @@ paths:
         "500":
           $ref: "#/components/responses/ServiceError"
 
-  /domains/{domainID}/invitations/{userID}:
     delete:
       operationId: deleteInvitation
       summary: Deletes a specific invitation
       description: |
-        Deletes a specific invitation that is identifier by the user ID and domain ID.
+        Deletes a specific invitation that is identified by the user ID and domain ID.
+        The user ID is provided in the request body.
       tags:
         - Invitations
       parameters:
         - $ref: "#/components/parameters/DomainID"
-        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        $ref: "#/components/requestBodies/DeleteInvitationReq"
       security:
         - bearerAuth: []
       responses:
@@ -989,9 +996,7 @@ components:
           example: 10
           description: Maximum number of items to return in one page.
       required:
-        - domains
         - total
-        - offset
     DomainUpdate:
       type: object
       properties:
@@ -1139,14 +1144,6 @@ components:
         type: string
       required: false
       example: "domainName"
-    Permission:
-      name: permission
-      description: permission.
-      in: query
-      schema:
-        type: string
-      required: false
-      example: "edit"
     ApiKeyId:
       name: keyID
       description: API Key ID.
@@ -1244,15 +1241,46 @@ components:
           - all
       required: false
       example: accepted
-    RoleID:
-      name: roleID
-      description: Unique role identifier.
+    Order:
+      name: order
+      description: Field by which to order the results
       in: query
       schema:
         type: string
-        format: uuid
-      required: true
-      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+      required: false
+      example: created_at
+    Direction:
+      name: dir
+      description: Direction of ordering the results.
+      in: query
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+      required: false
+      example: desc
+    AccessType:
+      name: access_type
+      description: Type of access the user has on the domain.
+      in: query
+      schema:
+        type: string
+        enum:
+          - direct
+          - domain
+          - indirect
+          - indirect_group
+      required: false
+      example: direct
+    OnlyTotal:
+      name: only_total
+      description: If true, the response will contain only the total number of domains that match the query parameters.
+      in: query
+      schema:
+        type: boolean
+        default: false
+      required: false
 
   requestBodies:
     DomainCreateReq:
@@ -1291,6 +1319,21 @@ components:
                 description: Domain unique identifier.
             required:
               - domain_id
+    DeleteInvitationReq:
+      description: JSON-formatted document describing request for deleting invitation
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: string
+                format: uuid
+                example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+                description: User unique identifier.
+            required:
+              - user_id
 
   responses:
     ServiceError:

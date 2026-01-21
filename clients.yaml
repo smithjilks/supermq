@@ -9,11 +9,11 @@ info:
     Some useful links:
     - [The SuperMQ repository](https://github.com/absmach/supermq)
   contact:
-    email: info@abstractmachines.fr
+    email: info@absmach.eu
   license:
     name: Apache 2.0
     url: https://github.com/absmach/supermq/blob/main/LICENSE
-  version: 0.15.1
+  version: 0.18.0
 
 servers:
   - url: http://localhost:9006
@@ -24,17 +24,17 @@ tags:
     description: CRUD operations for your clients
     externalDocs:
       description: Find out more about clients
-      url: https://docs.supermq.abstractmachines.fr/
+      url: https://docs.supermq.absmach.eu/
   - name: Roles
     description: All operations involving roles for clients
     externalDocs:
       description: Find out more about roles
-      url: https://docs.supermq.abstractmachines.fr/
+      url: https://docs.supermq.absmach.eu/
   - name: Health
     description: Health check operations
     externalDocs:
       description: Find out more about health checks
-      url: https://docs.supermq.abstractmachines.fr/
+      url: https://docs.supermq.absmach.eu/
 
 paths:
   /{domainID}/clients:
@@ -84,10 +84,22 @@ paths:
         - $ref: "auth.yaml#/components/parameters/DomainID"
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Order"
+        - $ref: "#/components/parameters/Direction"
         - $ref: "#/components/parameters/Metadata"
         - $ref: "#/components/parameters/Status"
         - $ref: "#/components/parameters/ClientName"
         - $ref: "#/components/parameters/Tags"
+        - $ref: "#/components/parameters/ID"
+        - $ref: "./schemas/roles.yaml#/components/parameters/ActionsQuery"
+        - $ref: "./schemas/roles.yaml#/components/parameters/RoleIDQuery"
+        - $ref: "./schemas/roles.yaml#/components/parameters/RoleNameQuery"
+        - $ref: "#/components/parameters/AccessType"
+        - $ref: "#/components/parameters/OnlyTotal"
+        - $ref: "#/components/parameters/Channel"
+        - $ref: "#/components/parameters/ConnectionType"
+        - $ref: "#/components/parameters/Group"
+        - $ref: "#/components/parameters/User"
       security:
         - bearerAuth: []
       responses:
@@ -311,7 +323,7 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          $ref: "#/components/responses/ClientRes"
+          $ref: "#/components/responses/DisabledClientRes"
         "400":
           description: Failed due to malformed client's ID.
         "401":
@@ -1089,9 +1101,7 @@ components:
           example: 10
           description: Maximum number of items to return in one page.
       required:
-        - clients
         - total
-        - offset
 
     ClientUpdate:
       type: object
@@ -1119,6 +1129,63 @@ components:
           uniqueItems: true
           items:
             type: string
+
+    DisabledClient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: Client unique identifier.
+        name:
+          type: string
+          example: clientName
+          description: Client name.
+        tags:
+          type: array
+          minItems: 0
+          items:
+            type: string
+          example: ["tag1", "tag2"]
+          description: Client tags.
+        domain_id:
+          type: string
+          format: uuid
+          example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+          description: ID of the domain to which client belongs.
+        credentials:
+          type: object
+          properties:
+            identity:
+              type: string
+              example: clientIDentity
+              description: Client Identity for example email address.
+            secret:
+              type: string
+              example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+              description: Client secret password.
+        metadata:
+          type: object
+          example: { "model": "example" }
+          description: Arbitrary, object-encoded client's data.
+        status:
+          type: string
+          description: Client Status
+          format: string
+          example: disabled
+        created_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Time when the channel was created.
+        updated_at:
+          type: string
+          format: date-time
+          example: "2019-11-26 13:31:52"
+          description: Time when the channel was created.
+      xml:
+        name: client
 
     ClientSecret:
       type: object
@@ -1215,7 +1282,6 @@ components:
       in: query
       schema:
         type: string
-        minimum: 0
       required: false
 
     Limit:
@@ -1228,7 +1294,7 @@ components:
         maximum: 100
         minimum: 1
       required: false
-      example: "100"
+      example: 100
 
     Offset:
       name: offset
@@ -1239,7 +1305,106 @@ components:
         default: 0
         minimum: 0
       required: false
-      example: "0"
+      example: 0
+
+    Order:
+      name: order
+      description: Field by which to order the results
+      in: query
+      schema:
+        type: string
+      required: false
+      example: created_at
+
+    Direction:
+      name: dir
+      description: Direction of ordering the results.
+      in: query
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+      required: false
+      example: desc
+
+    ID:
+      name: id
+      description: List clients with the given ID.
+      in: query
+      schema:
+        type: string
+        format: uuid
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    AccessType:
+      name: access_type
+      description: Type of access the user has on the client.
+      in: query
+      schema:
+        type: string
+        enum:
+          - direct
+          - domain
+          - indirect
+          - indirect_group
+      required: false
+      example: direct
+
+    OnlyTotal:
+      name: only_total
+      description: If true, the response will contain only the total number of clients that match the query parameters.
+      in: query
+      schema:
+        type: boolean
+        default: false
+      required: false
+
+    Channel:
+      name: channel
+      description: If provided lists clients connected to a channel with the provided ID.
+      in: query
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    ConnectionType:
+      name: connection_type
+      description: If provided with channel parameter lists clients connected to the channel with the provided connection type.
+      in: query
+      schema:
+        type: string
+        enum:
+          - Publish
+          - Subscribe
+      required: false
+      example: Publish
+
+    Group:
+      name: group
+      description: If provided lists clients belonging to a group with the provided ID.
+      in: query
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
+
+    User:
+      name: user
+      description: If provided lists clients associated with a user with the provided ID. Only available for admin users.
+      in: query
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+      required: false
+      example: bb7edb32-2eac-4aad-aebe-ed96fe073879
 
   requestBodies:
     ClientCreateReq:
@@ -1337,6 +1502,13 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Client"
+
+    DisabledClientRes:
+      description: Data retrieved.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/DisabledClient"
 
     ClientPageRes:
       description: Data retrieved.
